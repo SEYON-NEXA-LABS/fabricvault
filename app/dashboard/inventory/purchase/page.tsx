@@ -444,10 +444,10 @@ export default function PurchaseOrdersPage() {
                 </div>
               </div>
               <Button 
-                variant="ghost" 
+                variant="outline" 
                 size="sm" 
                 onClick={() => setSelectedPO(null)}
-                className="h-8 w-8 p-0 rounded-full hover:bg-slate-200/60 text-slate-500"
+                className="h-8 w-8 p-0 rounded-full border-slate-300 hover:bg-slate-100 text-slate-700"
               >
                 <X className="w-4 h-4" />
               </Button>
@@ -455,31 +455,31 @@ export default function PurchaseOrdersPage() {
 
             <div className="p-5 space-y-5 overflow-y-auto">
               {/* Meta details */}
-              <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-3.5 rounded-lg border border-slate-100">
+              <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-3.5 rounded-lg border border-slate-200">
                 <div className="space-y-1">
-                  <span className="text-slate-400 font-medium flex items-center gap-1">
-                    <User className="w-3.5 h-3.5 text-slate-400" /> Vendor
+                  <span className="text-slate-600 font-semibold flex items-center gap-1">
+                    <User className="w-3.5 h-3.5 text-indigo-600" /> Vendor
                   </span>
-                  <span className="font-bold text-slate-800 block text-sm">{selectedPO.vendorName}</span>
+                  <span className="font-bold text-slate-900 block text-sm">{selectedPO.vendorName}</span>
                   {selectedPO.vendorEmail && (
-                    <span className="text-[11px] text-slate-500 font-mono flex items-center gap-1">
-                      <Mail className="w-3 h-3 text-slate-400" /> {selectedPO.vendorEmail}
+                    <span className="text-[11px] text-slate-600 font-mono flex items-center gap-1">
+                      <Mail className="w-3 h-3 text-indigo-600" /> {selectedPO.vendorEmail}
                     </span>
                   )}
                 </div>
                 <div className="space-y-1">
-                  <span className="text-slate-400 font-medium flex items-center gap-1">
-                    <Building className="w-3.5 h-3.5 text-slate-400" /> Destination Warehouse
+                  <span className="text-slate-600 font-semibold flex items-center gap-1">
+                    <Building className="w-3.5 h-3.5 text-indigo-600" /> Destination Warehouse
                   </span>
-                  <span className="font-bold text-slate-800 block text-sm">{selectedPO.warehouse?.name}</span>
-                  <span className="text-[11px] text-slate-500 font-mono">Code: {selectedPO.warehouse?.code}</span>
+                  <span className="font-bold text-slate-900 block text-sm">{selectedPO.warehouse?.name}</span>
+                  <span className="text-[11px] text-slate-600 font-mono">Code: {selectedPO.warehouse?.code}</span>
                 </div>
               </div>
 
               {/* Items and received form */}
               <div className="space-y-3">
                 <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                  <Package className="w-4 h-4 text-indigo-500" /> Order Items Ledger
+                  <Package className="w-4 h-4 text-indigo-600" /> Order Items Ledger
                 </h3>
 
                 <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-1">
@@ -489,24 +489,24 @@ export default function PurchaseOrdersPage() {
                       <div key={item.id} className="p-3 bg-white rounded-lg border border-slate-200 flex flex-col justify-between gap-2 shadow-xs">
                         <div className="flex justify-between items-start">
                           <div>
-                            <span className="font-bold text-slate-800 text-xs">{item.variant?.title}</span>
-                            <span className="text-[10px] text-slate-400 font-mono block mt-0.5">{item.variant?.sku}</span>
-                            <span className="text-[10px] bg-slate-100 text-slate-600 font-medium px-1.5 py-0.5 rounded mt-1 inline-block mr-1">
+                            <span className="font-bold text-slate-900 text-xs">{item.variant?.title}</span>
+                            <span className="text-[10px] text-slate-600 font-mono block mt-0.5">{item.variant?.sku}</span>
+                            <span className="text-[10px] bg-slate-100 text-slate-700 font-medium px-1.5 py-0.5 rounded mt-1 inline-block mr-1 border border-slate-200">
                               Size: {item.variant?.size}
                             </span>
-                            <span className="text-[10px] bg-slate-100 text-slate-600 font-medium px-1.5 py-0.5 rounded mt-1 inline-block">
+                            <span className="text-[10px] bg-slate-100 text-slate-700 font-medium px-1.5 py-0.5 rounded mt-1 inline-block border border-slate-200">
                               Color: {item.variant?.color}
                             </span>
                           </div>
                           <div className="text-right">
-                            <span className="text-[11px] text-slate-400 block">Cost Price</span>
-                            <span className="font-semibold text-slate-800 text-xs font-mono">₹{item.costPrice}</span>
+                            <span className="text-[11px] text-slate-600 font-medium block">Cost Price</span>
+                            <span className="font-semibold text-slate-900 text-xs font-mono">₹{item.costPrice}</span>
                           </div>
                         </div>
 
                         <div className="flex items-center justify-between border-t border-slate-100 pt-2 mt-1">
                           <div className="text-xs">
-                            <span className="text-slate-400">Received / Ordered:</span>{" "}
+                            <span className="text-slate-600 font-semibold">Received / Ordered:</span>{" "}
                             <span className={`font-bold font-mono ${fullyReceived ? "text-emerald-600" : "text-amber-600"}`}>
                               {item.quantityReceived} / {item.quantityOrdered}
                             </span>

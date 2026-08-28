@@ -704,7 +704,7 @@ function SettingsContent() {
 
           return (
             <div className="flex items-center gap-2 bg-indigo-50/80 border border-indigo-100 rounded-xl p-3 shadow-2xs">
-              <Globe className="w-5 h-5 text-indigo-650 shrink-0" />
+              <Globe className="w-5 h-5 text-indigo-600 shrink-0" />
               <div className="text-xs">
                 <span className="font-bold text-indigo-950 block">Public Storefront URL</span>
                 <code className="text-[11px] font-mono text-indigo-700 bg-white px-2 py-0.5 rounded border border-indigo-200/60 block mt-0.5">
@@ -1065,7 +1065,7 @@ function SettingsContent() {
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleOpenWarehouseModal(wh)}
-                            className="text-gray-400 hover:text-indigo-650 p-1 rounded hover:bg-gray-50 transition-colors"
+                            className="text-gray-400 hover:text-indigo-600 p-1 rounded hover:bg-gray-50 transition-colors"
                             title="Edit Location"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
@@ -1529,7 +1529,7 @@ function SettingsContent() {
                 <div className="flex items-center justify-between border-b border-gray-100 pb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center">
-                      <CreditCard className="w-5 h-5 text-indigo-650" />
+                      <CreditCard className="w-5 h-5 text-indigo-600" />
                     </div>
                     <div>
                       <h4 className="font-bold text-gray-950 text-sm">Razorpay Payment Gateway</h4>
@@ -1644,7 +1644,7 @@ function SettingsContent() {
               <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-2xs space-y-6">
                 <div>
                   <h3 className="text-lg font-bold text-gray-900 tracking-tight flex items-center gap-2">
-                    <Palette className="w-5 h-5 text-indigo-650" /> Storefront Theme & Branding Customizer
+                    <Palette className="w-5 h-5 text-indigo-600" /> Storefront Theme & Branding Customizer
                   </h3>
                   <p className="text-xs text-gray-500 mt-1">
                     Customize your client storefront color theme, typography font, corner radius, and hero announcement banner.

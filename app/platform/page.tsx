@@ -258,9 +258,9 @@ export default function PlatformLandingPage() {
             <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
               <Globe className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-slate-900">Storefront, Domain & Dynamic SEO</h3>
+            <h3 className="text-lg font-bold text-slate-900">AI SEO Engine & Blog Marketing</h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Connect custom domain (`brand.in`), dynamic SEO tags, sitemap.xml, and WhatsApp OpenGraph preview cards for high conversion rates.
+              1-Click AI Copywriter generating Google SEO title tags, meta descriptions, and long-tail blog posts (`/blog`) with Schema.org `Article` JSON-LD rich snippets.
             </p>
           </div>
 
@@ -378,6 +378,18 @@ export default function PlatformLandingPage() {
 
               <tr className="hover:bg-slate-50/80">
                 <td className="py-4 px-4">
+                  <span className="font-bold text-slate-900 block">BASIC (Storefront Lite)</span>
+                  <span className="text-[10px] text-slate-500 font-medium">Best for: Early D2C stores starting online storefronts</span>
+                </td>
+                <td className="py-4 px-4 font-bold text-indigo-600">₹799 / mo</td>
+                <td className="py-4 px-4 text-slate-600">
+                  Shopify Basic + Apps: <span className="line-through text-rose-600 font-medium">₹4,500 / mo</span>
+                </td>
+                <td className="py-4 px-4 font-extrabold text-emerald-600">Save ₹44,412 / yr (82% cheaper)</td>
+              </tr>
+
+              <tr className="hover:bg-slate-50/80">
+                <td className="py-4 px-4">
                   <span className="font-bold text-slate-900 block">STARTER BUNDLE</span>
                   <span className="text-[10px] text-slate-500 font-medium">Best for: Registered D2C stores needing GST & Tally</span>
                 </td>
@@ -465,6 +477,16 @@ export default function PlatformLandingPage() {
                   <td className="py-3 px-4 font-bold text-emerald-600">Native Out-of-the-Box (USB Scanner Ready)</td>
                   <td className="py-3 px-4 text-rose-600 font-medium">Requires Shopify POS Pro ($89/mo per register)</td>
                 </tr>
+                <tr className="hover:bg-slate-50/60">
+                  <td className="py-3 px-4 font-bold text-slate-900">AI SEO Copywriter & Meta Generator</td>
+                  <td className="py-3 px-4 font-bold text-emerald-600">Native 1-Click AI Engine (₹0 Extra)</td>
+                  <td className="py-3 px-4 text-rose-600 font-medium">Requires 3rd-Party SEO Apps (+$25/mo)</td>
+                </tr>
+                <tr className="hover:bg-slate-50/60">
+                  <td className="py-3 px-4 font-bold text-slate-900">Blog Engine & Article JSON-LD Schema</td>
+                  <td className="py-3 px-4 font-bold text-emerald-600">Built-in Journal (`/blog`) + Google Rich Snippets</td>
+                  <td className="py-3 px-4 text-rose-600 font-medium">Requires paid Page Builders / Shogun (+$39/mo)</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -534,6 +556,7 @@ export default function PlatformLandingPage() {
           <div className="flex items-center gap-6 font-medium">
             <a href="#features" className="hover:text-white transition-colors">Features</a>
             <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
+            <Link href="/blog" className="text-indigo-400 hover:text-indigo-300 font-bold transition-colors">Public Journal & Blog</Link>
             <Link href="/help" className="text-indigo-400 hover:text-indigo-300 font-bold transition-colors">Help Center & SOPs</Link>
             <Link href="/admin" className="hover:text-white transition-colors">Merchant Desk</Link>
           </div>

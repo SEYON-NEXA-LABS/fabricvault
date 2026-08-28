@@ -827,7 +827,7 @@ export default function OrdersPage() {
                       onClick={() => setCurrentPage(pageNum)}
                       className={`w-8 h-8 rounded-lg text-xs font-bold transition-all flex items-center justify-center select-none cursor-pointer ${
                         active 
-                          ? "bg-indigo-650 text-white shadow-sm" 
+                          ? "bg-indigo-600 text-white shadow-sm" 
                           : "bg-white border border-gray-200 hover:bg-gray-50 text-gray-700"
                       }`}
                     >
@@ -891,7 +891,7 @@ export default function OrdersPage() {
                       {tf.status === "PENDING" && (
                         <button
                           onClick={() => handleExecuteTransferStatus(tf.id, "SENT")}
-                          className="bg-indigo-650 hover:bg-indigo-700 text-white px-2 py-0.5 rounded text-[10px] font-semibold"
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded text-[10px] font-semibold"
                         >
                           Ship
                         </button>
@@ -1101,7 +1101,7 @@ export default function OrdersPage() {
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-900 font-bold text-xs uppercase tracking-wide flex items-center gap-1.5">
-                      <ShieldAlert className="w-4 h-4 text-indigo-650" />
+                      <ShieldAlert className="w-4 h-4 text-indigo-600" />
                       RTO Risk & Pre-Dispatch
                     </span>
                     {(() => {

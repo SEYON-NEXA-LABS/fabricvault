@@ -28,6 +28,7 @@ import {
   PieChart,
   Star,
   Receipt,
+  BookOpen,
   MessageSquare,
   Clock,
   Share2,
@@ -228,8 +229,9 @@ export function Sidebar({
         { code: "5.2", name: "Abandoned Cart Recalls", icon: Clock, href: "/dashboard/crm?tab=abandoned", roles: ["SUPERADMIN", "TENANTADMIN", "MANAGER"] as UserRole[] },
         { code: "5.3", name: "WhatsApp Broadcasts", icon: MessageSquare, href: "/dashboard/crm?tab=whatsapp", roles: ["SUPERADMIN", "TENANTADMIN", "MANAGER"] as UserRole[] },
         { code: "5.4", name: "Social Media & Ads Leads", icon: Share2, href: "/dashboard/crm?tab=social", roles: ["SUPERADMIN", "TENANTADMIN", "MANAGER"] as UserRole[] },
-        { code: "5.5", name: "Banners & Storefront Themes", icon: Star, href: "/dashboard/crm?tab=storefront", roles: ["SUPERADMIN", "TENANTADMIN", "MANAGER"] as UserRole[] },
+        { code: "5.5", name: "Storefront & Layout Builder", icon: Star, href: "/dashboard/storefront", roles: ["SUPERADMIN", "TENANTADMIN", "MANAGER"] as UserRole[] },
         { code: "5.6", name: "Coupons & Promo Codes", icon: Receipt, href: "/dashboard/crm?tab=coupons", roles: ["SUPERADMIN", "TENANTADMIN", "MANAGER"] as UserRole[] },
+        { code: "5.7", name: "Blog & Articles CMS", icon: BookOpen, href: "/dashboard/blog", roles: ["SUPERADMIN", "TENANTADMIN", "MANAGER"] as UserRole[] },
       ]
     },
 

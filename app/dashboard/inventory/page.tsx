@@ -17,7 +17,8 @@ import {
   MapPin,
   Upload,
   FileDown,
-  Zap
+  Zap,
+  CheckCircle2
 } from "lucide-react";
 import {
   Table,
@@ -99,6 +100,75 @@ export default function StockInventoryPage() {
   const [importing, setImporting] = useState(false);
   const [parsedRows, setParsedRows] = useState<any[]>([]);
   const [importFileName, setImportFileName] = useState("");
+
+  // AI Copywriter Modal states
+  const [showAiCopyModal, setShowAiCopyModal] = useState(false);
+  const [aiProductTitle, setAiProductTitle] = useState("");
+  const [aiCategory, setAiCategory] = useState("Apparel");
+  const [aiBrand, setAiBrand] = useState("Seyon");
+  const [generatingAi, setGeneratingAi] = useState(false);
+  const [aiResults, setAiResults] = useState<any>(null);
+
+  const handleGenerateAiCopy = async () => {
+    if (!aiProductTitle) {
+      toast.error("Please enter a product title!");
+      return;
+    }
+    setGeneratingAi(true);
+    try {
+      const res = await fetch("/api/ai/generate-copy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "PRODUCT_COPY",
+          title: aiProductTitle,
+          category: aiCategory,
+          brand: aiBrand
+        })
+      });
+      const data = await res.json();
+      setAiResults(data);
+      toast.success("✨ AI Product Copy & SEO Meta generated!");
+    } catch (err) {
+      toast.error("Failed to generate AI copy");
+    } finally {
+      setGeneratingAi(false);
+    }
+  };
+
+  const [savingSeo, setSavingSeo] = useState(false);
+
+  const handleSaveSeoToProduct = async () => {
+    if (!aiResults || !products[0]?.variants[0]?.id) {
+      toast.error("No product variant selected to save SEO tags.");
+      return;
+    }
+    setSavingSeo(true);
+    try {
+      const res = await fetch("/api/products/seo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          variantId: products[0].variants[0].id,
+          metaTitle: aiResults.seoTitle,
+          metaDescription: aiResults.metaDescription,
+          description: aiResults.productStory,
+          instagramCaption: aiResults.instagramCaption
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success("✨ Successfully saved SEO Meta Tags & Product Story to Database!");
+        setShowAiCopyModal(false);
+      } else {
+        toast.error(data.error || "Failed to save SEO fields to database.");
+      }
+    } catch (err) {
+      toast.error("Failed to connect to SEO update API.");
+    } finally {
+      setSavingSeo(false);
+    }
+  };
 
   const handleOpenMatrixModal = () => {
     if (!selectedProduct) return;
@@ -826,9 +896,19 @@ export default function StockInventoryPage() {
         <div className="flex items-center gap-3">
           <button 
             onClick={handleOpenAddProduct}
-            className="flex items-center gap-2 bg-indigo-650 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition-all cursor-pointer font-bold"
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition-all cursor-pointer font-bold"
           >
             <Plus className="w-4 h-4" /> Add Product
+          </button>
+          <button 
+            onClick={() => {
+              setAiProductTitle(products[0]?.name || "Handloom Cotton Saree");
+              setAiCategory(products[0]?.category || "Apparel");
+              setShowAiCopyModal(true);
+            }}
+            className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-md transition-all cursor-pointer"
+          >
+            <Zap className="w-4 h-4 text-amber-300" /> AI Copywriter
           </button>
           <button 
             onClick={() => {
@@ -1075,10 +1155,10 @@ export default function StockInventoryPage() {
                         </TableCell>
                         <TableCell className="py-3.5 px-5 text-right" onClick={(e) => e.stopPropagation()}>
                           <Button 
-                            variant="ghost"
+                            variant="outline"
                             size="icon-sm"
                             onClick={() => setSelectedProduct(prod)}
-                            className="text-gray-400 hover:text-indigo-950 rounded-lg transition-colors cursor-pointer"
+                            className="text-slate-700 hover:text-indigo-600 border-slate-200 hover:border-indigo-300 rounded-lg transition-colors cursor-pointer"
                           >
                             <ChevronRight className="w-4 h-4" />
                           </Button>
@@ -1357,7 +1437,7 @@ export default function StockInventoryPage() {
                   <span>📊</span> Style Matrix Adjustment: {selectedProduct.name}
                 </h3>
                 <p className="text-xs text-gray-500 mt-1">
-                  Adjust quantities for all sizes and colors in warehouse: <strong className="text-indigo-650">{warehouses.find(w => w.id === selectedWarehouseId)?.name}</strong>
+                  Adjust quantities for all sizes and colors in warehouse: <strong className="text-indigo-600">{warehouses.find(w => w.id === selectedWarehouseId)?.name}</strong>
                 </p>
               </div>
               <button 
@@ -1430,7 +1510,7 @@ export default function StockInventoryPage() {
               <button
                 onClick={handleSaveMatrix}
                 disabled={savingMatrix}
-                className="px-4 py-2 bg-indigo-650 hover:bg-indigo-700 text-white rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
               >
                 {savingMatrix && <RefreshCw className="w-3 h-3 animate-spin" />}
                 Save Grid Matrix Adjustments
@@ -1611,7 +1691,7 @@ export default function StockInventoryPage() {
               <button
                 onClick={executeImport}
                 disabled={importing || parsedRows.length === 0}
-                className="px-4 py-2 bg-indigo-650 hover:bg-indigo-700 text-white rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm disabled:opacity-50 cursor-pointer"
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm disabled:opacity-50 cursor-pointer"
               >
                 {importing && <RefreshCw className="w-3 h-3 animate-spin" />}
                 Execute Bulk Import
@@ -1972,7 +2052,7 @@ export default function StockInventoryPage() {
                 <button
                   type="submit"
                   disabled={savingProduct}
-                  className="px-4 py-2 bg-indigo-650 hover:bg-indigo-700 text-white rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50"
                 >
                   {savingProduct && <RefreshCw className="w-3 h-3 animate-spin" />}
                   {productModalMode === "ADD" ? "Create Product Style" : "Save Changes"}
@@ -1980,6 +2060,105 @@ export default function StockInventoryPage() {
               </div>
 
             </form>
+          </div>
+        </div>
+      )}
+      {/* AI Copywriter Modal */}
+      {showAiCopyModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2">
+                <span className="p-2 bg-purple-100 text-purple-700 rounded-xl">
+                  <Zap className="w-5 h-5 text-amber-500" />
+                </span>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-base">✨ AI Product Copy & SEO Meta Generator</h3>
+                  <p className="text-xs text-slate-500">Generate Google Search SEO titles, meta descriptions, and Instagram captions.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAiCopyModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Product Title</label>
+                  <input
+                    type="text"
+                    value={aiProductTitle}
+                    onChange={(e) => setAiProductTitle(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-medium"
+                    placeholder="e.g. Pure Linen Casual Shirt"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Category</label>
+                  <input
+                    type="text"
+                    value={aiCategory}
+                    onChange={(e) => setAiCategory(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Brand Name</label>
+                  <input
+                    type="text"
+                    value={aiBrand}
+                    onChange={(e) => setAiBrand(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-medium"
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={handleGenerateAiCopy}
+                disabled={generatingAi}
+                className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {generatingAi ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4 text-amber-300" />}
+                Generate Copy & Meta Tags
+              </button>
+
+              {aiResults && (
+                <div className="space-y-4 pt-2 border-t border-slate-100">
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1">
+                    <span className="font-bold text-indigo-700 uppercase tracking-wider text-[10px] block">🔍 Google Search Title Tag</span>
+                    <p className="font-semibold text-slate-900">{aiResults.seoTitle}</p>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1">
+                    <span className="font-bold text-emerald-700 uppercase tracking-wider text-[10px] block">📝 Google Meta Description</span>
+                    <p className="text-slate-700 leading-relaxed">{aiResults.metaDescription}</p>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1">
+                    <span className="font-bold text-purple-700 uppercase tracking-wider text-[10px] block">📖 Storefront Product Story</span>
+                    <p className="text-slate-700 leading-relaxed">{aiResults.productStory}</p>
+                  </div>
+
+                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 space-y-1">
+                    <span className="font-bold text-purple-900 uppercase tracking-wider text-[10px] block">📱 Instagram & Social Media Hook</span>
+                    <p className="text-purple-900 whitespace-pre-wrap font-mono text-[11px]">{aiResults.instagramCaption}</p>
+                  </div>
+
+                  <button
+                    onClick={handleSaveSeoToProduct}
+                    disabled={savingSeo}
+                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-3"
+                  >
+                    {savingSeo ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                    Save & Apply SEO Meta Tags to Database
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

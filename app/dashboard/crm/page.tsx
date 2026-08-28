@@ -93,8 +93,35 @@ function CRMContent() {
   const [abandonedCarts, setAbandonedCarts] = useState<AbandonedCart[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"directory" | "abandoned" | "whatsapp" | "social" | "storefront" | "coupons">("directory");
+  const [activeTab, setActiveTab] = useState<"directory" | "abandoned" | "whatsapp" | "social" | "storefront" | "coupons" | "ai_marketing">("directory");
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerRecord | null>(null);
+
+  // AI WhatsApp Campaign state
+  const [aiSegmentType, setAiSegmentType] = useState<"VIP" | "WINBACK" | "WELCOME">("VIP");
+  const [generatingCampaign, setGeneratingCampaign] = useState(false);
+  const [aiCampaignResult, setAiCampaignResult] = useState<any>(null);
+
+  const handleGenerateAiCampaign = async (segType: "VIP" | "WINBACK" | "WELCOME") => {
+    setAiSegmentType(segType);
+    setGeneratingCampaign(true);
+    try {
+      const res = await fetch("/api/ai/generate-copy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "WHATSAPP_CAMPAIGN",
+          segmentType: segType
+        })
+      });
+      const data = await res.json();
+      setAiCampaignResult(data);
+      toast.success(`✨ Generated AI WhatsApp campaign for ${segType} segment!`);
+    } catch (err) {
+      toast.error("Failed to generate campaign");
+    } finally {
+      setGeneratingCampaign(false);
+    }
+  };
 
   useEffect(() => {
     if (tabParam && ["directory", "abandoned", "whatsapp", "social", "storefront", "coupons"].includes(tabParam)) {
@@ -390,6 +417,19 @@ function CRMContent() {
           }`}
         >
           <Share2 className="w-3.5 h-3.5 text-indigo-600" /> Social Media & Ads
+        </button>
+        <button
+          onClick={() => {
+            setActiveTab("ai_marketing");
+            if (!aiCampaignResult) handleGenerateAiCampaign("VIP");
+          }}
+          className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-3.5 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+            activeTab === "ai_marketing"
+              ? "bg-purple-600 text-white shadow-sm font-bold"
+              : "text-purple-700 hover:bg-purple-50 font-bold"
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5 text-amber-300" /> AI Marketing Assistant
         </button>
         <button
           onClick={() => setActiveTab("storefront")}
@@ -921,6 +961,100 @@ function CRMContent() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* AI Marketing Broadcast Assistant Tab */}
+      {(activeTab as string) === "ai_marketing" && (
+        <div className="space-y-6">
+          <div className="bg-gradient-to-r from-purple-900 to-indigo-900 rounded-2xl p-6 text-white space-y-4 shadow-xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="p-3 bg-white/10 rounded-xl">
+                  <Sparkles className="w-6 h-6 text-amber-300 animate-pulse" />
+                </span>
+                <div>
+                  <h3 className="font-black text-lg">✨ AI Customer Segment Broadcast Assistant</h3>
+                  <p className="text-xs text-purple-200">Automatically segment customers by LTV & order history to generate high-converting WhatsApp campaigns.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+              <button
+                onClick={() => handleGenerateAiCampaign("VIP")}
+                className={`p-4 rounded-xl text-left border transition-all cursor-pointer ${
+                  aiSegmentType === "VIP"
+                    ? "bg-white/20 border-white text-white shadow-md ring-2 ring-white/30"
+                    : "bg-white/5 border-white/10 text-purple-200 hover:bg-white/10"
+                }`}
+              >
+                <span className="font-extrabold text-sm block text-amber-300">👑 VIP High LTV Segment</span>
+                <span className="text-xs block text-purple-100 mt-1">Customers with LTV ≥ ₹10,000 or 3+ orders.</span>
+              </button>
+
+              <button
+                onClick={() => handleGenerateAiCampaign("WINBACK")}
+                className={`p-4 rounded-xl text-left border transition-all cursor-pointer ${
+                  aiSegmentType === "WINBACK"
+                    ? "bg-white/20 border-white text-white shadow-md ring-2 ring-white/30"
+                    : "bg-white/5 border-white/10 text-purple-200 hover:bg-white/10"
+                }`}
+              >
+                <span className="font-extrabold text-sm block text-rose-300">🔄 Inactive Win-Back Segment</span>
+                <span className="text-xs block text-purple-100 mt-1">Customers without a purchase in 60+ days.</span>
+              </button>
+
+              <button
+                onClick={() => handleGenerateAiCampaign("WELCOME")}
+                className={`p-4 rounded-xl text-left border transition-all cursor-pointer ${
+                  aiSegmentType === "WELCOME"
+                    ? "bg-white/20 border-white text-white shadow-md ring-2 ring-white/30"
+                    : "bg-white/5 border-white/10 text-purple-200 hover:bg-white/10"
+                }`}
+              >
+                <span className="font-extrabold text-sm block text-emerald-300">🎁 First-Time Buyer Segment</span>
+                <span className="text-xs block text-purple-100 mt-1">New customers after their first purchase.</span>
+              </button>
+            </div>
+          </div>
+
+          {generatingCampaign && (
+            <div className="p-8 text-center text-slate-500 flex items-center justify-center gap-2">
+              <RefreshCw className="w-5 h-5 animate-spin text-purple-600" />
+              <span>Generating AI WhatsApp broadcast template...</span>
+            </div>
+          )}
+
+          {aiCampaignResult && !generatingCampaign && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between border-b pb-3">
+                <span className="font-extrabold text-sm text-slate-900">{aiCampaignResult.segmentName}</span>
+                <span className="bg-purple-100 text-purple-800 text-xs font-extrabold px-3 py-1 rounded-full">
+                  Promo Code: {aiCampaignResult.couponCode}
+                </span>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Personalized WhatsApp Broadcast Template</span>
+                <p className="font-mono text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">
+                  {aiCampaignResult.message}
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <span className="text-xs text-slate-500 font-medium">✨ Incentive: {aiCampaignResult.discountText}</span>
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(aiCampaignResult.message)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <Send className="w-4 h-4" /> Launch WhatsApp Broadcast
+                </a>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

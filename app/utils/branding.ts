@@ -39,6 +39,9 @@ export function applyBrandingStyles(company: any, activeBrand: any) {
     if (theme.radius) {
       root.style.setProperty("--radius", theme.radius);
     }
+    if (theme.layoutPreset) {
+      root.setAttribute("data-layout-preset", theme.layoutPreset);
+    }
     if (theme.fontFamily) {
       root.style.setProperty("--font-sans", theme.fontFamily);
       document.body.style.fontFamily = theme.fontFamily;
