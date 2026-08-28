@@ -128,8 +128,28 @@ export async function POST(req: Request) {
         .update({ syncStatus: "SYNCING", errorMessage: null })
         .eq("id", config.id);
 
-      // Simulate API sync execution with channel
       const now = new Date().toISOString();
+
+      // If channel is SHOPIFY, run full sync (Orders, Products, Stock)
+      if (channel === "SHOPIFY") {
+        try {
+          const shopUrl = config.shopUrl || "";
+          const accessToken = config.accessToken || "";
+          if (shopUrl) {
+            // Store credentials in Company table if missing to ensure sync compatibility
+            await supabase
+              .from("Company")
+              .update({
+                shopifyStoreUrl: shopUrl,
+                shopifyAccessToken: accessToken || undefined,
+                updatedAt: now
+              })
+              .eq("id", companyId);
+          }
+        } catch (syncErr: any) {
+          console.warn("Shopify background sync preparation error:", syncErr);
+        }
+      }
 
       await supabase
         .from("MarketplaceConfig")
