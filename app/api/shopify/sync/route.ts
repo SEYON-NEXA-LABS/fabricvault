@@ -206,7 +206,8 @@ export async function POST(req: Request) {
               shippingZip: "110001",
               shippingCountry: "India",
               totalWeightKg: 0.4,
-              deliveryStatus: "PROCESSING"
+              deliveryStatus: "PROCESSING",
+              orderSource: "SHOPIFY"
             });
           }
         }
@@ -667,6 +668,7 @@ export async function POST(req: Request) {
                 shippingCountry,
                 totalWeightKg: 0.35,
                 deliveryStatus: "PROCESSING",
+                orderSource: "SHOPIFY",
                 warehouseId: warehouse ? warehouse.id : null
               });
           }

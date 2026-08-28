@@ -700,7 +700,8 @@ export default function OrdersPage() {
                 ) : (
                   paginatedOrders.map(ord => {
                     const active = selectedOrder?.id === ord.id;
-                    const sourceVal = ord.orderSource || (ord.shopifyOrderId?.startsWith('storefront-') ? 'STOREFRONT' : 'SHOPIFY');
+                    const isShopifyId = ord.shopifyOrderId?.startsWith('sh-') || ord.shopifyOrderId?.includes('gid://shopify/');
+                    const sourceVal = ord.orderSource ? ord.orderSource : (isShopifyId ? 'SHOPIFY' : 'STOREFRONT');
                     return (
                       <tr 
                         key={ord.id}
