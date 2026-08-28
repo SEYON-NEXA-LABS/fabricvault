@@ -74,15 +74,52 @@ export async function POST(req: Request) {
 
     // Action 1: Manual Trigger Stock & Order Sync
     if (action === "SYNC_NOW") {
-      const { data: config, error: fetchErr } = await supabase
+      let { data: config, error: fetchErr } = await supabase
         .from("MarketplaceConfig")
         .select("*")
         .eq("companyId", companyId)
         .eq("channel", channel)
         .maybeSingle();
 
+      // Fallback: If MarketplaceConfig entry is missing for SHOPIFY, check legacy Company table
+      if (!config && channel === "SHOPIFY") {
+        const { data: comp } = await supabase
+          .from("Company")
+          .select("id, name, shopifyStoreUrl, shopifyAccessToken")
+          .eq("id", companyId)
+          .maybeSingle();
+
+        if (comp && comp.shopifyStoreUrl) {
+          const { data: autoConfig } = await supabase
+            .from("MarketplaceConfig")
+            .upsert(
+              {
+                companyId: comp.id,
+                channel: "SHOPIFY",
+                storeName: comp.name + " (Shopify)",
+                shopUrl: comp.shopifyStoreUrl,
+                accessToken: comp.shopifyAccessToken || null,
+                autoSyncInventory: true,
+                autoIngestOrders: true,
+                isActive: true,
+                syncStatus: "SUCCESS",
+                lastSyncedAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              },
+              { onConflict: "companyId,channel" }
+            )
+            .select()
+            .single();
+
+          config = autoConfig;
+        }
+      }
+
       if (fetchErr || !config) {
-        return NextResponse.json({ error: "Marketplace configuration not found" }, { status: 404 });
+        return NextResponse.json(
+          { error: `Marketplace configuration not found for ${channel}. Please connect and save your store credentials first.` },
+          { status: 404 }
+        );
       }
 
       // Update sync status to SYNCING
