@@ -29,7 +29,8 @@ import {
   Star,
   Zap,
   Info,
-  User
+  User,
+  Eye
 } from "lucide-react";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { generateOrganizationSchema, generateProductSchema } from "./utils/seo";
@@ -209,17 +210,24 @@ const FALLBACK_PRODUCTS = [
 ];
 
 const getColorValue = (colorName: string) => {
+  if (!colorName) return "#e4e4e7";
   const normalized = colorName.toLowerCase();
   if (normalized.includes("indigo") || normalized.includes("blue")) return "#3b82f6";
+  if (normalized.includes("navy")) return "#1e3a8a";
+  if (normalized.includes("teal") || normalized.includes("cyan") || normalized.includes("turquoise")) return "#06b6d4";
   if (normalized.includes("green") || normalized.includes("sage")) return "#86efac";
+  if (normalized.includes("emerald")) return "#059669";
   if (normalized.includes("olive")) return "#65a30d";
   if (normalized.includes("black") || normalized.includes("charcoal")) return "#18181b";
-  if (normalized.includes("white") || normalized.includes("off-white")) return "#fafafa";
+  if (normalized.includes("white") || normalized.includes("off-white") || normalized.includes("cream")) return "#fafafa";
   if (normalized.includes("gold") || normalized.includes("yellow") || normalized.includes("mustard")) return "#facc15";
-  if (normalized.includes("orange") || normalized.includes("rust")) return "#f97316";
-  if (normalized.includes("rose") || normalized.includes("crimson")) return "#e11d48";
-  if (normalized.includes("navy")) return "#1e3a8a";
-  return "#e4e4e7";
+  if (normalized.includes("orange") || normalized.includes("rust") || normalized.includes("peach") || normalized.includes("coral")) return "#f97316";
+  if (normalized.includes("rose") || normalized.includes("crimson") || normalized.includes("red") || normalized.includes("maroon") || normalized.includes("ruby")) return "#e11d48";
+  if (normalized.includes("pink") || normalized.includes("magenta") || normalized.includes("blush")) return "#ec4899";
+  if (normalized.includes("purple") || normalized.includes("violet") || normalized.includes("lavender") || normalized.includes("plum")) return "#8b5cf6";
+  if (normalized.includes("brown") || normalized.includes("tan") || normalized.includes("beige") || normalized.includes("camel") || normalized.includes("khaki")) return "#92400e";
+  if (normalized.includes("grey") || normalized.includes("gray")) return "#71717a";
+  return "#d4d4d8";
 };
 
 const isDarkColor = (colorName: string) => {
@@ -276,7 +284,7 @@ function ProductImage({ prod, style, showGallery = true }: { prod: any; style?: 
     const activeUrl = imagesList[activeIdx] || imagesList[0];
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", width: "100%", height: "100%" }}>
-        <div style={{ flex: 1, position: "relative", overflow: "hidden", borderRadius: "0.375rem" }}>
+        <div style={{ flex: 1, position: "relative", overflow: "hidden", borderRadius: "0.375rem", aspectRatio: "3/4", width: "100%" }}>
           <img
             src={activeUrl}
             alt={prod.title}
@@ -1484,8 +1492,38 @@ export default function StorefrontPage() {
                         </span>
 
                         {/* Product Image */}
-                        <div style={{ backgroundColor: "#fafafa", position: "relative", cursor: "pointer" }} onClick={() => setSelectedProduct(prod)}>
+                        <div 
+                          style={{ backgroundColor: "#fafafa", position: "relative", cursor: "pointer", overflow: "hidden" }} 
+                          onClick={() => setSelectedProduct(prod)}
+                          className="group"
+                        >
                           <ProductImage prod={prod} />
+                          
+                          {/* Quick View Hover Overlay Button */}
+                          <div 
+                            style={{
+                              position: "absolute",
+                              bottom: "0.75rem",
+                              left: "50%",
+                              transform: "translateX(-50%)",
+                              zIndex: 10,
+                              backgroundColor: "rgba(255, 255, 255, 0.95)",
+                              backdropFilter: "blur(4px)",
+                              color: "#09090b",
+                              fontSize: "0.7rem",
+                              fontWeight: "700",
+                              padding: "0.4rem 0.85rem",
+                              borderRadius: "2rem",
+                              boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "0.35rem",
+                              border: "1px solid rgba(0,0,0,0.06)",
+                              transition: "all 0.2s ease"
+                            }}
+                          >
+                            <Eye style={{ width: "0.85rem", height: "0.85rem", color: "#0d9488" }} /> Quick View
+                          </div>
                         </div>
 
                         {/* Specs */}

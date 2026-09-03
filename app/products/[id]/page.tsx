@@ -30,21 +30,32 @@ import {
   Zap,
   ChevronDown,
   ChevronUp,
-  User
+  ChevronRight,
+  User,
+  Barcode,
+  Printer,
+  Scan
 } from "lucide-react";
 
 const getColorValue = (colorName: string) => {
+  if (!colorName) return "#e4e4e7";
   const normalized = colorName.toLowerCase();
   if (normalized.includes("indigo") || normalized.includes("blue")) return "#3b82f6";
+  if (normalized.includes("navy")) return "#1e3a8a";
+  if (normalized.includes("teal") || normalized.includes("cyan") || normalized.includes("turquoise")) return "#06b6d4";
   if (normalized.includes("green") || normalized.includes("sage")) return "#86efac";
+  if (normalized.includes("emerald")) return "#059669";
   if (normalized.includes("olive")) return "#65a30d";
   if (normalized.includes("black") || normalized.includes("charcoal")) return "#18181b";
-  if (normalized.includes("white") || normalized.includes("off-white")) return "#fafafa";
+  if (normalized.includes("white") || normalized.includes("off-white") || normalized.includes("cream")) return "#fafafa";
   if (normalized.includes("gold") || normalized.includes("yellow") || normalized.includes("mustard")) return "#facc15";
-  if (normalized.includes("orange") || normalized.includes("rust")) return "#f97316";
-  if (normalized.includes("rose") || normalized.includes("crimson")) return "#e11d48";
-  if (normalized.includes("navy")) return "#1e3a8a";
-  return "#e4e4e7";
+  if (normalized.includes("orange") || normalized.includes("rust") || normalized.includes("peach") || normalized.includes("coral")) return "#f97316";
+  if (normalized.includes("rose") || normalized.includes("crimson") || normalized.includes("red") || normalized.includes("maroon") || normalized.includes("ruby")) return "#e11d48";
+  if (normalized.includes("pink") || normalized.includes("magenta") || normalized.includes("blush")) return "#ec4899";
+  if (normalized.includes("purple") || normalized.includes("violet") || normalized.includes("lavender") || normalized.includes("plum")) return "#8b5cf6";
+  if (normalized.includes("brown") || normalized.includes("tan") || normalized.includes("beige") || normalized.includes("camel") || normalized.includes("khaki")) return "#92400e";
+  if (normalized.includes("grey") || normalized.includes("gray")) return "#71717a";
+  return "#d4d4d8";
 };
 
 const isDarkColor = (colorName: string) => {
@@ -374,6 +385,32 @@ export default function ProductDetailPage() {
     }
   }, [id]);
 
+  // Derive sizes dynamically from product attributes
+  const sizes = React.useMemo(() => {
+    if (!product) return ["S", "M", "L", "XL"];
+    if (Array.isArray(product.availableSizes) && product.availableSizes.length > 0) {
+      return product.availableSizes;
+    }
+    const s = product.size || "M";
+    if (s === "Standard" || s.includes("ml") || s.includes("mm") || s === "Free Size" || s.startsWith("UK") || s.startsWith("US") || s.startsWith("EU")) {
+      return [s];
+    }
+    if (!isNaN(Number(s))) {
+      const num = Number(s);
+      return [String(num - 2), String(num), String(num + 2), String(num + 4)];
+    }
+    return ["S", "M", "L", "XL"];
+  }, [product]);
+
+  // Derive colors dynamically matching the actual product item
+  const colors = React.useMemo(() => {
+    if (!product) return ["Default Color"];
+    if (Array.isArray(product.availableColors) && product.availableColors.length > 0) {
+      return product.availableColors;
+    }
+    return [product.color || "Default Color"];
+  }, [product]);
+
   const toggleFavorite = () => {
     const nextVal = !isFavorite;
     setIsFavorite(nextVal);
@@ -488,8 +525,6 @@ export default function ProductDetailPage() {
 
   const inStock = product.currentStockLevel > 0;
   const isLowStock = inStock && product.currentStockLevel <= 5;
-  const sizes = ["XS", "S", "M", "L", "XL", "2XL", "3XL"];
-  const colors = Array.from(new Set([product.color || "Indigo Blue", "Off-White", "Sage Green", "Charcoal Black", "Mustard Yellow", "Rust Orange", "Crimson Rose"]));
 
   const productJsonLd = {
     "@context": "https://schema.org",
@@ -611,19 +646,26 @@ export default function ProductDetailPage() {
 
       {/* Main product area */}
       <main style={{ flex: 1, maxWidth: "1000px", margin: "2rem auto", padding: "0 1.5rem", width: "100%" }}>
-        <Link href="/" style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "0.5rem",
-          textDecoration: "none",
-          color: "#71717a",
-          fontSize: "0.85rem",
-          fontWeight: "500",
-          marginBottom: "1.5rem",
-          transition: "color 0.2s"
-        }} className="back-link">
-          <ArrowLeft style={{ width: "0.9rem", height: "0.9rem" }} /> Back to Catalog
-        </Link>
+        {/* Interactive Breadcrumb Navigation Trail */}
+        <nav aria-label="Breadcrumb" style={{ marginBottom: "1.25rem" }}>
+          <ol style={{ display: "flex", alignItems: "center", gap: "0.4rem", listStyle: "none", padding: 0, margin: 0, fontSize: "0.8rem", color: "#71717a", flexWrap: "wrap" }}>
+            <li>
+              <Link href="/" style={{ textDecoration: "none", color: "#71717a", fontWeight: "500", transition: "color 0.15s ease" }} className="hover:text-slate-900">
+                Home
+              </Link>
+            </li>
+            <li><ChevronRight style={{ width: "0.8rem", height: "0.8rem", color: "#a1a1aa" }} /></li>
+            <li>
+              <Link href={`/?category=${encodeURIComponent(product.category || "Apparel")}`} style={{ textDecoration: "none", color: "#71717a", fontWeight: "500" }}>
+                {product.category || "Apparel"}
+              </Link>
+            </li>
+            <li><ChevronRight style={{ width: "0.8rem", height: "0.8rem", color: "#a1a1aa" }} /></li>
+            <li style={{ color: "#09090b", fontWeight: "600", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "320px" }}>
+              {product.title}
+            </li>
+          </ol>
+        </nav>
 
         <div style={{
           display: "grid",
@@ -733,7 +775,7 @@ export default function ProductDetailPage() {
                 Select Size
               </span>
               <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap", alignItems: "center" }}>
-                {sizes.map(size => {
+                {sizes.map((size: string) => {
                   const isSelected = selectedSize === size;
                   return (
                     <button
@@ -771,7 +813,7 @@ export default function ProductDetailPage() {
                 Select Color
               </span>
               <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
-                {colors.map(color => {
+                {colors.map((color: string) => {
                   const isSelected = selectedColor === color;
                   const bgVal = getColorValue(color);
                   const isDark = isDarkColor(color);
@@ -886,11 +928,11 @@ export default function ProductDetailPage() {
                   {openAccordion === "specs" ? <ChevronUp style={{ width: "0.9rem", height: "0.9rem" }} /> : <ChevronDown style={{ width: "0.9rem", height: "0.9rem" }} />}
                 </button>
                 {openAccordion === "specs" && (
-                  <div style={{ paddingBottom: "0.75rem", fontSize: "0.75rem", color: "#71717a", lineHeight: "1.5" }}>
-                    <p style={{ margin: "0 0 0.25rem 0" }}><strong>Sync SKU:</strong> {product.sku}</p>
-                    <p style={{ margin: "0 0 0.25rem 0" }}><strong>Category:</strong> {product.category || "Apparel"}</p>
-                    <p style={{ margin: "0 0 0.25rem 0" }}><strong>Default Stock:</strong> {product.currentStockLevel} units</p>
-                    <p style={{ margin: 0 }}><strong>Channel:</strong> Native Seyon Direct DB Link (0ms latency)</p>
+                  <div style={{ paddingBottom: "0.75rem", fontSize: "0.75rem", color: "#71717a", lineHeight: "1.6" }}>
+                    <p style={{ margin: "0 0 0.35rem 0" }}><strong>Item SKU:</strong> <code style={{ backgroundColor: "#f4f4f5", padding: "0.15rem 0.4rem", borderRadius: "0.25rem", fontFamily: "monospace" }}>{product.sku}</code></p>
+                    <p style={{ margin: "0 0 0.35rem 0" }}><strong>Category:</strong> {product.category || "Apparel"}</p>
+                    <p style={{ margin: "0 0 0.35rem 0" }}><strong>Material & Care:</strong> 100% Premium Natural Weave — Gentle Hand Wash / Dry Clean</p>
+                    <p style={{ margin: 0 }}><strong>Availability:</strong> {product.currentStockLevel > 0 ? "In Stock (Dispatched within 24 Hours)" : "Out of Stock"}</p>
                   </div>
                 )}
               </div>
