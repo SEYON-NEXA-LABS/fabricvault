@@ -44,7 +44,7 @@ export async function GET(req: Request) {
       ordersQuery,
       supabase
         .from("ProductVariant")
-        .select("id, sku, title, size, color, currentStockLevel, safetyStockLimit")
+        .select("id, sku, title, size, color, currentStockLevel, safetyStockLimit, thumbnailConfig")
         .eq("companyId", companyId),
       movementsQuery,
     ]);
@@ -179,11 +179,29 @@ export async function GET(req: Request) {
     });
 
     // ── Low Stock Alerts ──
-    const lowStockAlerts = lowStockVariants.slice(0, 4).map((v: any) => ({
-      name: `${v.title} - ${v.color} / ${v.size}`,
-      sku: v.sku,
-      qty: v.currentStockLevel,
-    }));
+    const lowStockAlerts = lowStockVariants.slice(0, 5).map((v: any) => {
+      let imgUrl = "";
+      if (v.thumbnailConfig) {
+        if (typeof v.thumbnailConfig === "string") {
+          try {
+            const cfg = JSON.parse(v.thumbnailConfig);
+            imgUrl = cfg.imageUrl || cfg.url || (Array.isArray(cfg.images) ? cfg.images[0] : "");
+          } catch (_) {
+            if (v.thumbnailConfig.startsWith("http") || v.thumbnailConfig.startsWith("data:")) {
+              imgUrl = v.thumbnailConfig;
+            }
+          }
+        } else if (typeof v.thumbnailConfig === "object") {
+          imgUrl = v.thumbnailConfig.imageUrl || v.thumbnailConfig.url || (Array.isArray(v.thumbnailConfig.images) ? v.thumbnailConfig.images[0] : "");
+        }
+      }
+      return {
+        name: `${v.title} - ${v.color} / ${v.size}`,
+        sku: v.sku,
+        qty: v.currentStockLevel,
+        imageUrl: imgUrl,
+      };
+    });
 
     // ── Real Regional State / City Sales Heatmap (Aggregated from OrderFulfillment table) ──
     const stateMap: { [state: string]: { state: string; city: string; count: number; rawRevenue: number } } = {};

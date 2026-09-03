@@ -51,7 +51,7 @@ export async function POST() {
     await supabase
       .from("User")
       .delete()
-      .in("email", ["admin@seyon.local", "operator@seyon.local", "seyonnexalabs@gmail.com"]);
+      .in("email", ["admin@seyon.local", "operator@seyon.local", "seyonnexalabs@gmail.com", "wolfadmin@seyon.local", "alpha@seyon.local", "beta@seyon.local"]);
 
     // 2. Insert Company
     const { data: company, error: compErr } = await supabase
@@ -188,17 +188,17 @@ export async function POST() {
 
     // 5. Insert Product Variants
     const variantsToSeed = [
-      { sku: "TWCT001-BLK-M", title: "SEYON Oversized T-Shirt", size: "M", color: "Black", barcodeString: "TWCT001BLKM", price: 1299, category: "Top", targetGroup: "Adults", ageRange: null },
-      { sku: "TWCT001-BLK-L", title: "SEYON Oversized T-Shirt", size: "L", color: "Black", barcodeString: "TWCT001BLKL", price: 1299, category: "Top", targetGroup: "Adults", ageRange: null },
-      { sku: "TWCT001-WHT-S", title: "SEYON Oversized T-Shirt", size: "S", color: "White", barcodeString: "TWCT001WHTS", price: 1299, category: "Top", targetGroup: "Adults", ageRange: null },
-      { sku: "TWCP001-OLV-32", title: "SEYON Cargo Pants", size: "32", color: "Olive", barcodeString: "TWCP001OLV32", price: 1999, category: "Bottom", targetGroup: "Adults", ageRange: null },
-      { sku: "TWCP001-OLV-34", title: "SEYON Cargo Pants", size: "34", color: "Olive", barcodeString: "TWCP001OLV34", price: 1999, category: "Bottom", targetGroup: "Adults", ageRange: null },
-      { sku: "TWH001-GRY-L", title: "SEYON Hoodie", size: "L", color: "Grey", barcodeString: "TWH001GRYL", price: 2499, category: "Top", targetGroup: "Adults", ageRange: null },
-      { sku: "TWH001-GRY-XL", title: "SEYON Hoodie", size: "XL", color: "Grey", barcodeString: "TWH001GRYXL", price: 2499, category: "Top", targetGroup: "Adults", ageRange: null },
-      { sku: "TWSS001-NVY-XL", title: "SEYON Sweatshirt", size: "XL", color: "Navy", barcodeString: "TWSS001NVYXL", price: 1799, category: "Top", targetGroup: "Adults", ageRange: null },
-      { sku: "TWSS001-NVY-L", title: "SEYON Sweatshirt", size: "L", color: "Navy", barcodeString: "TWSS001NVYL", price: 1799, category: "Top", targetGroup: "Adults", ageRange: null },
-      { sku: "TWJG001-BLK-M", title: "SEYON Joggers", size: "M", color: "Black", barcodeString: "TWJG001BLKM", price: 1599, category: "Bottom", targetGroup: "Kids", ageRange: "4-6 Years" },
-      { sku: "TWJG001-BLK-L", title: "SEYON Joggers", size: "L", color: "Black", barcodeString: "TWJG001BLKL", price: 1599, category: "Bottom", targetGroup: "Kids", ageRange: "6-8 Years" }
+      { sku: "TWCT001-BLK-M", title: "SEYON Oversized T-Shirt", size: "M", color: "Black", barcodeString: "TWCT001BLKM", price: 1299, compareAtPrice: 1999, category: "Top", targetGroup: "Adults", ageRange: null },
+      { sku: "TWCT001-BLK-L", title: "SEYON Oversized T-Shirt", size: "L", color: "Black", barcodeString: "TWCT001BLKL", price: 1299, compareAtPrice: 1999, category: "Top", targetGroup: "Adults", ageRange: null },
+      { sku: "TWCT001-WHT-S", title: "SEYON Oversized T-Shirt", size: "S", color: "White", barcodeString: "TWCT001WHTS", price: 1299, compareAtPrice: 1999, category: "Top", targetGroup: "Adults", ageRange: null },
+      { sku: "TWCP001-OLV-32", title: "SEYON Cargo Pants", size: "32", color: "Olive", barcodeString: "TWCP001OLV32", price: 1999, compareAtPrice: 2499, category: "Bottom", targetGroup: "Adults", ageRange: null },
+      { sku: "TWCP001-OLV-34", title: "SEYON Cargo Pants", size: "34", color: "Olive", barcodeString: "TWCP001OLV34", price: 1999, compareAtPrice: 2499, category: "Bottom", targetGroup: "Adults", ageRange: null },
+      { sku: "TWH001-GRY-L", title: "SEYON Hoodie", size: "L", color: "Grey", barcodeString: "TWH001GRYL", price: 2499, compareAtPrice: 3299, category: "Top", targetGroup: "Adults", ageRange: null },
+      { sku: "TWH001-GRY-XL", title: "SEYON Hoodie", size: "XL", color: "Grey", barcodeString: "TWH001GRYXL", price: 2499, compareAtPrice: 3299, category: "Top", targetGroup: "Adults", ageRange: null },
+      { sku: "TWSS001-NVY-XL", title: "SEYON Sweatshirt", size: "XL", color: "Navy", barcodeString: "TWSS001NVYXL", price: 1799, compareAtPrice: 2299, category: "Top", targetGroup: "Adults", ageRange: null },
+      { sku: "TWSS001-NVY-L", title: "SEYON Sweatshirt", size: "L", color: "Navy", barcodeString: "TWSS001NVYL", price: 1799, compareAtPrice: 2299, category: "Top", targetGroup: "Adults", ageRange: null },
+      { sku: "TWJG001-BLK-M", title: "SEYON Joggers", size: "M", color: "Black", barcodeString: "TWJG001BLKM", price: 1599, compareAtPrice: 1999, category: "Bottom", targetGroup: "Kids", ageRange: "4-6 Years" },
+      { sku: "TWJG001-BLK-L", title: "SEYON Joggers", size: "L", color: "Black", barcodeString: "TWJG001BLKL", price: 1599, compareAtPrice: 1999, category: "Bottom", targetGroup: "Kids", ageRange: "6-8 Years" }
     ];
 
     const variantsPayload = variantsToSeed.map((v, idx) => {
@@ -224,6 +224,7 @@ export async function POST() {
         currentStockLevel: 0,
         thumbnailConfig: mockConfig,
         price: v.price,
+        compareAtPrice: v.compareAtPrice || Math.round(v.price * 1.25),
         category: v.category,
         targetGroup: v.targetGroup,
         ageRange: v.ageRange
@@ -391,7 +392,16 @@ export async function POST() {
         status: "ACTIVE",
         nextRenewalDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
       });
-    if (subErr) throw subErr;
+    // 12b. Seed User Accounts (wolfadmin, alpha, beta & admin)
+    const { error: userSeedErr } = await supabase
+      .from("User")
+      .insert([
+        { companyId, username: "wolfadmin", email: "wolfadmin@seyon.local", password: "password123", role: "TENANTADMIN", isActive: true },
+        { companyId, username: "alpha", email: "alpha@seyon.local", password: "password123", role: "STAFF", isActive: true },
+        { companyId, username: "beta", email: "beta@seyon.local", password: "password123", role: "STAFF", isActive: true },
+        { companyId, username: "seyonadmin", email: "admin@seyon.local", password: "password123", role: "SUPERADMIN", isActive: true }
+      ]);
+    if (userSeedErr) console.warn("User seed notice:", (userSeedErr as any).message || userSeedErr);
 
     console.log("Programmatic seed: Database seeding completed successfully.");
 

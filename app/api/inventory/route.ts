@@ -28,9 +28,12 @@ export async function GET() {
         averageDailySales,
         thumbnailConfig,
         price,
+        compareAtPrice,
         category,
         targetGroup,
         ageRange,
+        brand,
+        vendor,
         createdAt,
         updatedAt,
         stocks:WarehouseStock(

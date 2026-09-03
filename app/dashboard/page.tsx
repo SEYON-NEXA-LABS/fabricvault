@@ -16,7 +16,8 @@ import {
   ArrowDown,
   ShoppingCart,
   RefreshCw,
-  MapPin
+  MapPin,
+  Package
 } from "lucide-react";
 import { RecentOrderItem, RegionSalesHeatmap } from "@/types/all";
 
@@ -38,7 +39,7 @@ interface DashboardData {
   rtoData: Array<{ name: string; value: number; fill: string }>;
   topProducts: Array<{ id: number; name: string; sku: string; variants: number; totalStock: number }>;
   recentOrders: RecentOrderItem[];
-  lowStockAlerts: Array<{ name: string; sku: string; qty: number }>;
+  lowStockAlerts: Array<{ name: string; sku: string; qty: number; imageUrl?: string }>;
   regionSales: RegionSalesHeatmap[];
 }
 
@@ -359,35 +360,47 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
             {/* Low Stock Alerts (Priority Operational Card) */}
-            <div className="lg:col-span-4 bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping"></span>
-                  Low Stock Critical Alerts
-                </h3>
-                <Link href="/dashboard/inventory" className="text-xs font-semibold text-indigo-600 hover:underline">
-                  View Catalog →
-                </Link>
-              </div>
-              <div className="space-y-3.5">
-                {lowStockAlerts.length === 0 ? (
-                  <p className="text-xs text-gray-400 text-center py-6">All warehouse SKUs fully stocked.</p>
-                ) : lowStockAlerts.map((alert, i) => (
-                  <div key={i} className="flex items-center justify-between p-2.5 rounded-lg bg-amber-50/40 border border-amber-100/60">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-white rounded border border-amber-200 flex items-center justify-center overflow-hidden">
-                        <img src={`https://picsum.photos/seed/alert${i}/32/32`} className="w-full h-full object-cover mix-blend-multiply" alt="" />
+            <div className="lg:col-span-4 bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex flex-col justify-between">
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping"></span>
+                    Low Stock Critical Alerts
+                  </h3>
+                  <Link href="/dashboard/inventory" className="text-xs font-semibold text-indigo-600 hover:underline">
+                    View Catalog →
+                  </Link>
+                </div>
+                <div className="space-y-3">
+                  {lowStockAlerts.length === 0 ? (
+                    <div className="text-center py-8 space-y-2">
+                      <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center font-bold text-sm">✓</div>
+                      <p className="text-xs text-gray-500 font-medium">All warehouse SKUs fully stocked.</p>
+                    </div>
+                  ) : lowStockAlerts.map((alert, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-amber-50/50 border border-amber-200/60 shadow-2xs hover:bg-amber-50 transition-colors">
+                      <div className="flex items-center gap-3.5">
+                        {/* BIGGER EXACT PRODUCT IMAGE (56x56 px) */}
+                        <div className="w-14 h-14 bg-white rounded-lg border border-amber-200 shadow-2xs overflow-hidden flex items-center justify-center shrink-0">
+                          {alert.imageUrl ? (
+                            <img src={alert.imageUrl} className="w-full h-full object-cover" alt={alert.name} />
+                          ) : (
+                            <Package className="w-7 h-7 text-amber-500/80" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-gray-900 leading-snug mb-1">{alert.name}</p>
+                          <p className="text-[11px] text-gray-500 font-mono">SKU: {alert.sku}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs font-bold text-gray-900 leading-none mb-1">{alert.name}</p>
-                        <p className="text-[10px] text-gray-500 font-mono">SKU: {alert.sku}</p>
+                      <div className="text-right shrink-0">
+                        <span className="text-xs font-black text-rose-600 bg-rose-50 px-2.5 py-1 rounded-md border border-rose-200 shadow-2xs">
+                          {alert.qty} Pcs
+                        </span>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <span className="text-xs font-extrabold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-100">{alert.qty} Pcs</span>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
 

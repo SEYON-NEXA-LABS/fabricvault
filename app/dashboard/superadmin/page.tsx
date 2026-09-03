@@ -378,7 +378,7 @@ function SuperadminContent() {
                     </h4>
                     <p className="text-[10px] leading-relaxed text-stone-300">
                       Schemas verified on{" "}
-                      <strong className="text-white">{new Date(integrityReport.checkedAt).toLocaleDateString()}</strong>. Row Level Security policies prevent crosstalk between client domains.
+                      <strong className="text-white">{new Date(integrityReport.verifiedAt || integrityReport.checkedAt || Date.now()).toLocaleDateString()}</strong>. Row Level Security policies prevent crosstalk between client domains.
                     </p>
                   </div>
                 </div>

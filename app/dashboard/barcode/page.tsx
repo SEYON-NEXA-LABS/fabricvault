@@ -13,7 +13,8 @@ import {
   FileText, 
   Layers,
   ShoppingBag,
-  QrCode
+  QrCode,
+  Package
 } from "lucide-react";
 
 
@@ -24,12 +25,16 @@ interface ProductVariant {
   color: string;
   size: string;
   price: number;
+  compareAtPrice?: number;
   shopifyVariantId: string;
   barcodeString?: string;
   barcode?: string;
   category?: string;
   targetGroup?: string;
   ageRange?: string;
+  brand?: string;
+  vendor?: string;
+  imageUrl?: string;
 }
 
 export type TagPreset = "STANDARD" | "COMPACT" | "MICRO" | "TAG_40X50" | "TAG_50X40_LAND" | "TAG_40X50_HYBRID";
@@ -49,6 +54,22 @@ export default function BarcodePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showProductDropdown, setShowProductDropdown] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(true);
+  const [imgErrorMap, setImgErrorMap] = useState<{ [key: string]: boolean }>({});
+
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  // Close product search dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowProductDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // Fetch product variants from API on mount
   useEffect(() => {
@@ -58,6 +79,34 @@ export default function BarcodePage() {
         const res = await fetch("/api/inventory");
         const data = await res.json();
         if (Array.isArray(data)) {
+          const parseVariantImageUrl = (v: any): string => {
+            if (v.imageUrl && typeof v.imageUrl === "string" && (v.imageUrl.startsWith("http") || v.imageUrl.startsWith("data:"))) {
+              return v.imageUrl;
+            }
+            if (v.image && typeof v.image === "string" && (v.image.startsWith("http") || v.image.startsWith("data:"))) {
+              return v.image;
+            }
+            if (v.thumbnailConfig) {
+              if (typeof v.thumbnailConfig === "string") {
+                try {
+                  const cfg = JSON.parse(v.thumbnailConfig);
+                  if (cfg.imageUrl) return cfg.imageUrl;
+                  if (cfg.url) return cfg.url;
+                  if (Array.isArray(cfg.images) && cfg.images[0]) return cfg.images[0];
+                } catch (_) {
+                  if (v.thumbnailConfig.startsWith("http") || v.thumbnailConfig.startsWith("data:")) {
+                    return v.thumbnailConfig;
+                  }
+                }
+              } else if (typeof v.thumbnailConfig === "object") {
+                if (v.thumbnailConfig.imageUrl) return v.thumbnailConfig.imageUrl;
+                if (v.thumbnailConfig.url) return v.thumbnailConfig.url;
+                if (Array.isArray(v.thumbnailConfig.images) && v.thumbnailConfig.images[0]) return v.thumbnailConfig.images[0];
+              }
+            }
+            return "";
+          };
+
           const mapped: ProductVariant[] = data.map((v: any) => ({
             id: v.id,
             name: v.title,
@@ -65,10 +114,14 @@ export default function BarcodePage() {
             color: v.color || "",
             size: v.size || "",
             price: v.price || 1299,
+            compareAtPrice: (v.compareAtPrice && Number(v.compareAtPrice) > Number(v.price)) ? Number(v.compareAtPrice) : Math.round((v.price || 1299) * 1.25),
             shopifyVariantId: v.shopifyVariantId || "",
             category: v.category || "",
             targetGroup: v.targetGroup || "",
             ageRange: v.ageRange || "",
+            brand: v.brand || undefined,
+            vendor: v.vendor || undefined,
+            imageUrl: parseVariantImageUrl(v),
           }));
           setProducts(mapped);
           if (mapped.length > 0) {
@@ -148,25 +201,31 @@ export default function BarcodePage() {
   
   const [displayValue, setDisplayValue] = useState<boolean>(true);
   const [showPrice, setShowPrice] = useState<boolean>(true);
-  const [showBrand, setShowBrand] = useState<boolean>(true);
+  const [showCompareAtPrice, setShowCompareAtPrice] = useState<boolean>(false);
+  const [showBrand, setShowBrand] = useState<boolean>(false);
+  const [showVendor, setShowVendor] = useState<boolean>(false);
   const [customBrand, setCustomBrand] = useState<string>("");
 
   useEffect(() => {
-    if (company?.name && !customBrand) {
-      setCustomBrand(company.name);
+    if (!customBrand) {
+      if (selectedProduct?.vendor) {
+        setCustomBrand(selectedProduct.vendor);
+      } else if (selectedProduct?.brand) {
+        setCustomBrand(selectedProduct.brand);
+      } else if (company?.name) {
+        setCustomBrand(company.name);
+      }
     }
-  }, [company]);
+  }, [company, selectedProduct]);
 
   const handlePresetChange = (preset: TagPreset) => {
     setTagPreset(preset);
     if (preset === "STANDARD") {
       setQrSize(100);
-      setShowBrand(true);
       setShowPrice(true);
       setDisplayValue(true);
     } else if (preset === "COMPACT") {
       setQrSize(80);
-      setShowBrand(true);
       setShowPrice(false);
       setDisplayValue(true);
     } else if (preset === "MICRO") {
@@ -176,17 +235,14 @@ export default function BarcodePage() {
       setDisplayValue(false);
     } else if (preset === "TAG_40X50") {
       setQrSize(90);
-      setShowBrand(true);
       setShowPrice(true);
       setDisplayValue(true);
     } else if (preset === "TAG_50X40_LAND") {
       setQrSize(75);
-      setShowBrand(true);
       setShowPrice(true);
       setDisplayValue(true);
     } else if (preset === "TAG_40X50_HYBRID") {
       setQrSize(70);
-      setShowBrand(true);
       setShowPrice(true);
       setDisplayValue(true);
     }
@@ -353,7 +409,7 @@ export default function BarcodePage() {
               Select Product Variant
             </h2>
 
-            <div className="relative">
+            <div className="relative" ref={dropdownRef}>
               <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
@@ -364,50 +420,134 @@ export default function BarcodePage() {
                 className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
               />
               {showProductDropdown && (
-                <div className="absolute z-10 left-0 right-0 mt-1.5 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                  {filteredProducts.map((p) => (
-                    <div
-                      key={p.id}
-                      onClick={() => {
-                        setSelectedProduct(p);
-                        setShowProductDropdown(false);
-                        setSearchQuery("");
-                      }}
-                      className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 cursor-pointer text-xs"
-                    >
-                      <div>
-                        <p className="font-semibold text-gray-900">{p.name}</p>
-                        <p className="text-gray-500 font-mono">SKU: {p.sku}</p>
+                <div className="absolute z-20 left-0 right-0 mt-1.5 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100">
+                  {filteredProducts.length === 0 ? (
+                    <div className="px-4 py-3 text-xs text-gray-400 text-center">No matching variants found</div>
+                  ) : (
+                    filteredProducts.map((p) => (
+                      <div
+                        key={p.id}
+                        onClick={() => {
+                          setSelectedProduct(p);
+                          setShowProductDropdown(false);
+                          setSearchQuery("");
+                        }}
+                        className="flex items-center justify-between px-4 py-2.5 hover:bg-indigo-50/50 cursor-pointer text-xs transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
+                            {p.imageUrl && !imgErrorMap[p.id] ? (
+                              <img 
+                                src={p.imageUrl} 
+                                alt={p.name} 
+                                className="w-full h-full object-cover" 
+                                onError={() => setImgErrorMap(prev => ({ ...prev, [p.id]: true }))}
+                              />
+                            ) : (
+                              <Package className="w-4 h-4 text-slate-400" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900">{p.name}</p>
+                            <p className="text-gray-500 font-mono text-[11px]">SKU: {p.sku}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-mono font-medium">
+                            {p.color || "No Color"} / {p.size || "No Size"}
+                          </span>
+                          <span className="font-bold text-gray-900">₹{p.price}</span>
+                        </div>
                       </div>
-                      <span className="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded font-mono">
-                        {p.color} / {p.size}
-                      </span>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               )}
             </div>
 
-            <div className="bg-slate-50 border border-slate-100 rounded-lg p-4 flex items-center justify-between flex-wrap gap-4 text-xs">
-              <div>
-                <p className="text-gray-400 uppercase font-bold tracking-wider text-[9px]">Active Variant</p>
-                <h3 className="font-bold text-gray-900 text-base">{selectedProduct.name}</h3>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <p className="text-gray-500 font-mono">SKU: {selectedProduct.sku}</p>
-                  <span className="text-gray-300">•</span>
-                  <p className="text-indigo-900 font-mono font-bold">Barcode: {selectedProduct.barcode || selectedProduct.sku}</p>
-                  {selectedProduct.barcode && !selectedProduct.barcode.startsWith("BAR-") ? (
-                    <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-1.5 py-0.5 rounded">Shopify Barcode</span>
-                  ) : (
-                    <span className="bg-slate-200 text-slate-700 text-[10px] font-semibold px-1.5 py-0.5 rounded">Internal ERP Barcode</span>
-                  )}
+            {/* Active Variant Card with Full Details */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-4 shadow-2xs">
+              <div className="flex items-start justify-between flex-wrap md:flex-nowrap gap-4">
+                <div className="flex items-center gap-4">
+                  {/* BIGGER ACTIVE VARIANT IMAGE CONTAINER (96x96 px) */}
+                  <div className="w-24 h-24 rounded-2xl bg-white border border-slate-200/90 shadow-sm overflow-hidden flex items-center justify-center shrink-0 group relative">
+                    {selectedProduct.imageUrl && !imgErrorMap[selectedProduct.id] ? (
+                      <img 
+                        src={selectedProduct.imageUrl} 
+                        alt={selectedProduct.name} 
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+                        onError={() => setImgErrorMap(prev => ({ ...prev, [selectedProduct.id]: true }))}
+                      />
+                    ) : (
+                      <Package className="w-10 h-10 text-indigo-400/80" />
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-400 uppercase font-bold tracking-wider text-[9px]">Active Variant</span>
+                      {selectedProduct.category && (
+                        <span className="bg-indigo-100 text-indigo-800 text-[10px] font-semibold px-2.5 py-0.5 rounded-full">
+                          {selectedProduct.category}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="font-bold text-gray-900 text-lg leading-snug">{selectedProduct.name}</h3>
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <span>Color: <b className="text-gray-800">{selectedProduct.color || "Standard"}</b></span>
+                      <span>•</span>
+                      <span>Size: <b className="text-indigo-600">{selectedProduct.size || "Standard"}</b></span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-slate-200 px-4 py-2.5 rounded-xl shadow-2xs text-right shrink-0">
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Price (MRP)</p>
+                  <p className="font-extrabold text-indigo-950 text-xl leading-none mt-1">
+                    ₹{selectedProduct.price.toLocaleString("en-IN")}
+                  </p>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <span className="bg-white border border-gray-200 px-2.5 py-1 rounded font-semibold text-gray-700">Size: {selectedProduct.size}</span>
-                <span className="bg-white border border-gray-200 px-2.5 py-1 rounded font-semibold text-gray-700">Color: {selectedProduct.color}</span>
-                <span className="bg-white border border-gray-200 px-2.5 py-1 rounded font-bold text-indigo-700">₹{selectedProduct.price}</span>
+
+              {/* Grid of full product properties */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 pt-1.5 border-t border-slate-200/80 text-xs">
+                <div className="bg-white p-2.5 rounded-lg border border-slate-200/70 shadow-2xs">
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">SKU Code</p>
+                  <p className="font-mono font-bold text-gray-900 truncate mt-0.5">{selectedProduct.sku}</p>
+                </div>
+
+                <div className="bg-white p-2.5 rounded-lg border border-slate-200/70 shadow-2xs">
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Barcode</p>
+                  <div className="flex items-center justify-between gap-1 mt-0.5">
+                    <p className="font-mono font-bold text-indigo-900 truncate">{selectedProduct.barcode || selectedProduct.sku}</p>
+                    {selectedProduct.barcode && !selectedProduct.barcode.startsWith("BAR-") ? (
+                      <span className="bg-emerald-100 text-emerald-800 text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0">Shopify</span>
+                    ) : (
+                      <span className="bg-slate-200 text-slate-700 text-[9px] font-semibold px-1.5 py-0.5 rounded shrink-0">ERP</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-white p-2.5 rounded-lg border border-slate-200/70 shadow-2xs">
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Color & Size</p>
+                  <p className="font-semibold text-gray-900 truncate mt-0.5">
+                    {selectedProduct.color || "Default"} <span className="text-gray-300">•</span> <span className="font-extrabold text-indigo-600">{selectedProduct.size || "Std"}</span>
+                  </p>
+                </div>
+
+                <div className="bg-white p-2.5 rounded-lg border border-slate-200/70 shadow-2xs">
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Target Group</p>
+                  <p className="font-medium text-gray-800 truncate mt-0.5">
+                    {selectedProduct.targetGroup || "General"} {selectedProduct.ageRange ? `(${selectedProduct.ageRange})` : ""}
+                  </p>
+                </div>
               </div>
+
+              {selectedProduct.shopifyVariantId && (
+                <div className="flex items-center justify-between text-[10px] font-mono text-gray-400 pt-1 border-t border-slate-200/50">
+                  <span>Shopify Variant ID: {selectedProduct.shopifyVariantId}</span>
+                  <span>Internal ID: {selectedProduct.id}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -553,15 +693,27 @@ export default function BarcodePage() {
                   />
                   Print Brand Header
                 </label>
-                {showBrand && (
+                <input
+                  type="text"
+                  value={customBrand}
+                  onChange={(e) => setCustomBrand(e.target.value)}
+                  disabled={!showBrand}
+                  placeholder="Enter brand name..."
+                  className={`w-full border rounded-lg p-2 text-xs transition-colors focus:outline-none ${
+                    showBrand 
+                      ? "bg-white border-indigo-300 text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 shadow-xs" 
+                      : "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed"
+                  }`}
+                />
+                <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer mt-1">
                   <input
-                    type="text"
-                    value={customBrand}
-                    onChange={(e) => setCustomBrand(e.target.value)}
-                    className="bg-gray-50 border border-gray-200 rounded p-1 text-xs focus:outline-none"
-                    placeholder="Brand label"
+                    type="checkbox"
+                    checked={showVendor}
+                    onChange={(e) => setShowVendor(e.target.checked)}
+                    className="rounded text-indigo-600 border-gray-300"
                   />
-                )}
+                  Print Vendor Sub-line
+                </label>
                 <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer mt-2">
                   <input
                     type="checkbox"
@@ -571,6 +723,17 @@ export default function BarcodePage() {
                   />
                   Print Price Badge
                 </label>
+                {showPrice && (
+                  <label className="flex items-center gap-2 text-[11px] font-medium text-gray-600 cursor-pointer pl-5 mt-1">
+                    <input
+                      type="checkbox"
+                      checked={showCompareAtPrice}
+                      onChange={(e) => setShowCompareAtPrice(e.target.checked)}
+                      className="rounded text-indigo-600 border-gray-300"
+                    />
+                    Include Struck-through Compare-At / Original Price
+                  </label>
+                )}
               </div>
             </div>
           </div>
@@ -628,27 +791,26 @@ export default function BarcodePage() {
                 tagPreset === "TAG_50X40_LAND" ? "p-3 w-[189px] min-h-[151px]" :
                 "p-4 w-52 min-h-[140px]"
               }`}>
-                {/* High-visibility size block at top-right */}
-                <div className={`absolute bg-slate-900 text-white rounded font-extrabold flex items-center justify-center border border-black shadow-sm ${
-                  tagPreset === "MICRO" 
-                    ? "top-1.5 right-1.5 px-1.5 py-0.5 text-sm min-w-[24px] h-[24px]" 
-                    : "top-2 right-2 px-2 py-0.5 text-base min-w-[30px] h-[30px]"
-                }`}>
-                  {selectedProduct.size}
-                </div>
-
-                <div className={`w-full text-left ${tagPreset === "MICRO" ? "pr-8" : "pr-12"}`}>
-                  {showBrand && (
-                    <p className="text-[10px] font-bold text-gray-900 tracking-wider mb-0.5 uppercase">
+                <div className="w-full space-y-1 text-left border-b border-gray-100 pb-1.5 mb-1">
+                  {showBrand && customBrand && (
+                    <p className="text-[9px] font-extrabold text-indigo-900 uppercase tracking-wider leading-none truncate">
                       {customBrand}
                     </p>
                   )}
-                  <p className="text-[9px] text-gray-900 font-bold leading-none truncate w-full mb-1">
-                    {selectedProduct.name}
-                  </p>
-                  <p className="text-[8px] text-gray-500 leading-none truncate w-full">
-                    Color: {selectedProduct.color} {selectedProduct.targetGroup ? `| Age: ${selectedProduct.targetGroup}${selectedProduct.ageRange ? ` (${selectedProduct.ageRange})` : ""}` : ""}
-                  </p>
+                  <div className="flex items-start justify-between gap-1.5">
+                    <h4 className="text-xs font-black text-gray-900 leading-tight line-clamp-2 flex-1">
+                      {selectedProduct.name}
+                    </h4>
+                    <span className="bg-slate-900 text-white rounded font-extrabold text-xs px-1.5 py-0.5 min-w-[22px] text-center shrink-0 border border-black shadow-xs">
+                      {selectedProduct.size || "STD"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-1 text-[9.5px] font-bold text-gray-700 leading-none">
+                    <span>Color: <b className="text-black">{selectedProduct.color || "Default"}</b></span>
+                    {showVendor && (
+                      <span className="truncate max-w-[105px]">Vendor: <b className="text-indigo-900">{selectedProduct.vendor || selectedProduct.brand || company?.name || "Seyon"}</b></span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-center my-2.5">
@@ -681,9 +843,18 @@ export default function BarcodePage() {
                 )}
 
                 {showPrice && (
-                  <div className="border-t border-gray-200 w-full mt-2 pt-1.5 flex justify-between text-[9px] text-gray-900 font-bold">
-                    <span>MRP</span>
-                    <span className="text-indigo-950">₹{selectedProduct.price}</span>
+                  <div className="border-t border-gray-300 w-full mt-2 pt-1.5 flex justify-between items-center text-xs font-black text-slate-950 tracking-wide">
+                    <span className="text-[10px] text-slate-500 font-extrabold uppercase">MRP</span>
+                    <div className="flex items-center gap-1.5">
+                      {showCompareAtPrice && (
+                        <span className="line-through text-gray-400 text-[11px] font-bold">
+                          ₹{((selectedProduct.compareAtPrice && selectedProduct.compareAtPrice > selectedProduct.price) 
+                            ? selectedProduct.compareAtPrice 
+                            : Math.round(selectedProduct.price * 1.25)).toLocaleString("en-IN")}
+                        </span>
+                      )}
+                      <span className="text-sm font-black text-slate-950">₹{selectedProduct.price.toLocaleString("en-IN")}</span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -819,13 +990,22 @@ export default function BarcodePage() {
               <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                 {printQueue.map((item) => (
                   <div key={item.id} className="flex items-center justify-between bg-gray-50 border border-gray-150 rounded-lg p-2.5 text-xs">
-                    <div>
-                      <p className="font-semibold text-gray-700 leading-snug">{item.variant.name}</p>
-                      <p className="text-gray-400 font-mono text-[10px] mt-0.5">{item.variant.sku} · {item.preset} · ×{item.quantity}</p>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-md bg-white border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
+                        {item.variant.imageUrl ? (
+                          <img src={item.variant.imageUrl} alt={item.variant.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <Package className="w-3.5 h-3.5 text-slate-400" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-700 leading-snug">{item.variant.name}</p>
+                        <p className="text-gray-400 font-mono text-[10px] mt-0.5">{item.variant.sku} · {item.preset} · ×{item.quantity}</p>
+                      </div>
                     </div>
                     <button 
                       onClick={() => removeFromQueue(item.id)}
-                      className="text-gray-450 hover:text-red-650 transition-colors"
+                      className="text-gray-400 hover:text-red-600 transition-colors p-1"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -901,7 +1081,9 @@ export default function BarcodePage() {
                   qrSize={qrSize}
                   displayValue={displayValue}
                   showPrice={showPrice}
+                  showCompareAtPrice={showCompareAtPrice}
                   showBrand={showBrand}
+                  showVendor={showVendor}
                   customBrand={customBrand}
                   tagPreset={item.preset}
                 />
@@ -921,7 +1103,9 @@ export default function BarcodePage() {
                 qrSize={qrSize}
                 displayValue={displayValue}
                 showPrice={showPrice}
+                showCompareAtPrice={showCompareAtPrice}
                 showBrand={showBrand}
+                showVendor={showVendor}
                 customBrand={customBrand}
                 tagPreset={tagPreset}
               />
@@ -943,7 +1127,9 @@ interface PrintTagProps {
   qrSize: number;
   displayValue: boolean;
   showPrice: boolean;
+  showCompareAtPrice?: boolean;
   showBrand: boolean;
+  showVendor?: boolean;
   customBrand: string;
   tagPreset: TagPreset;
 }
@@ -958,7 +1144,9 @@ function PrintTag({
   qrSize,
   displayValue,
   showPrice,
+  showCompareAtPrice,
   showBrand,
+  showVendor,
   customBrand,
   tagPreset
 }: PrintTagProps) {
@@ -997,29 +1185,26 @@ function PrintTag({
       tagPreset === "TAG_50X40_LAND" ? "p-3 min-h-[140px] max-w-[195px]" :
       "p-4 min-h-[140px]"
     }`}>
-      {/* High-visibility size block at top-right */}
-      <div className={`absolute bg-slate-900 text-white rounded font-extrabold flex items-center justify-center border border-black shadow-sm ${
-        tagPreset === "MICRO" 
-          ? "top-1.5 right-1.5 px-1.5 py-0.5 text-sm min-w-[24px] h-[24px]" 
-          : "top-2 right-2 px-2 py-0.5 text-base min-w-[30px] h-[30px]"
-      }`}>
-        {variant.size}
-      </div>
-
-      <div className={`w-full text-left ${tagPreset === "MICRO" ? "pr-8" : "pr-10"}`}>
-        {printShowBrand && (
-          <p className="text-[10px] font-bold text-slate-900 uppercase tracking-wider mb-0.5">
+      <div className="w-full space-y-1 text-left border-b border-gray-200 pb-1.5 mb-1">
+        {printShowBrand && customBrand && (
+          <p className="text-[9px] font-extrabold text-slate-900 uppercase tracking-wider leading-none truncate">
             {customBrand}
           </p>
         )}
-        <p className="text-[9px] text-slate-900 font-bold leading-none truncate w-full mb-1">
-          {variant.name}
-        </p>
-        {tagPreset !== "MICRO" && (
-          <p className="text-[8px] text-slate-500 leading-none truncate w-full">
-            Color: {variant.color} {variant.targetGroup ? `| Age: ${variant.targetGroup}` : ""}
-          </p>
-        )}
+        <div className="flex items-start justify-between gap-1.5">
+          <h4 className="text-xs font-black text-slate-950 leading-tight line-clamp-2 flex-1">
+            {variant.name}
+          </h4>
+          <span className="bg-slate-900 text-white rounded font-extrabold text-xs px-1.5 py-0.5 min-w-[22px] text-center shrink-0 border border-black shadow-xs">
+            {variant.size || "STD"}
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-1 text-[9.5px] font-bold text-slate-800 leading-none">
+          <span>Color: <b className="text-black">{variant.color || "Default"}</b></span>
+          {showVendor && (
+            <span className="truncate max-w-[105px]">Vendor: <b className="text-indigo-950">{variant.vendor || variant.brand || customBrand || "Seyon"}</b></span>
+          )}
+        </div>
       </div>
       
       {tagPreset === "TAG_40X50_HYBRID" ? (
@@ -1069,9 +1254,18 @@ function PrintTag({
       )}
 
       {printShowPrice && (
-        <div className="border-t border-gray-200 w-full mt-1.5 pt-1 flex justify-between text-[9px] text-slate-900 font-bold">
-          <span>MRP</span>
-          <span>₹{variant.price}</span>
+        <div className="border-t border-gray-400 w-full mt-2 pt-1 flex justify-between items-center text-xs font-black text-black tracking-wide">
+          <span className="text-[10px] text-gray-700 font-extrabold uppercase">MRP</span>
+          <div className="flex items-center gap-1.5">
+            {showCompareAtPrice && (
+              <span className="line-through text-gray-500 text-[11px] font-bold">
+                ₹{((variant.compareAtPrice && variant.compareAtPrice > variant.price) 
+                  ? variant.compareAtPrice 
+                  : Math.round(variant.price * 1.25)).toLocaleString("en-IN")}
+              </span>
+            )}
+            <span className="text-sm font-black text-black">₹{variant.price.toLocaleString("en-IN")}</span>
+          </div>
         </div>
       )}
     </div>

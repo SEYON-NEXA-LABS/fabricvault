@@ -159,3 +159,52 @@ export function generateProductOpenGraphMetadata(product: ProductSeoData, compan
   };
 }
 
+/**
+ * Generate BlogPosting JSON-LD Schema for Google Search News & Blog Rich Snippets
+ */
+export function generateBlogArticleSchema(
+  article: { title: string; slug: string; excerpt?: string; content?: string; author?: string; featuredImage?: string; createdAt?: string },
+  company?: CompanySeoData | null
+) {
+  const domain = getBaseDomain(company);
+  const companyName = company?.storeName || company?.name || "Seyon Shopping";
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "headline": article.title,
+    "image": article.featuredImage || `${domain}/logo.png`,
+    "description": article.excerpt || article.title,
+    "url": `${domain}/blog/${article.slug}`,
+    "datePublished": article.createdAt || new Date().toISOString(),
+    "author": {
+      "@type": "Person",
+      "name": article.author || `${companyName} Editorial Team`
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": companyName,
+      "logo": {
+        "@type": "ImageObject",
+        "url": company?.logoUrl || `${domain}/logo.png`
+      }
+    }
+  };
+}
+
+/**
+ * Generate BreadcrumbList JSON-LD Schema for Google Search Navigation Snippets
+ */
+export function generateBreadcrumbSchema(items: { name: string; item: string }[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": items.map((it, idx) => ({
+      "@type": "ListItem",
+      "position": idx + 1,
+      "name": it.name,
+      "item": it.item
+    }))
+  };
+}
+

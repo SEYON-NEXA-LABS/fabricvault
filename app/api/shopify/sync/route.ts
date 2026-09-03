@@ -36,11 +36,13 @@ export async function POST(req: Request) {
     let shopifyAccessToken = company?.shopifyAccessToken;
     let shopifyClientId = company?.shopifyClientId;
 
+    let shopifyClientSecret = company?.shopifyClientSecret;
+
     // Fallback: If not in Company, check MarketplaceConfig
-    if (!shopifyStoreUrl || !shopifyAccessToken) {
+    if (!shopifyStoreUrl || !shopifyAccessToken || !shopifyClientSecret) {
       const { data: mpConfig } = await supabase
         .from("MarketplaceConfig")
-        .select("shopUrl, accessToken, apiKey")
+        .select("shopUrl, accessToken, apiKey, apiSecret")
         .eq("companyId", companyId)
         .eq("channel", "SHOPIFY")
         .maybeSingle();
@@ -49,6 +51,7 @@ export async function POST(req: Request) {
         shopifyStoreUrl = shopifyStoreUrl || mpConfig.shopUrl;
         shopifyAccessToken = shopifyAccessToken || mpConfig.accessToken;
         shopifyClientId = shopifyClientId || mpConfig.apiKey;
+        shopifyClientSecret = shopifyClientSecret || mpConfig.apiSecret;
       }
     }
 
@@ -66,15 +69,22 @@ export async function POST(req: Request) {
         shopifyAccessToken.startsWith("shpss_mock")
       );
 
-    const timestamp = Date.now();
-    const durationSec = (Math.random() * 2 + 1).toFixed(1);
+    const startTime = Date.now();
+    const timestamp = startTime;
+    const syncJobId = `SYN-${Math.floor(1000 + Math.random() * 9000)}`;
+    let recordsCount = 0;
+    const tableCounts: Record<string, number> = {
+      ProductVariant: 0,
+      Customer: 0,
+      Order: 0,
+      OrderItem: 0,
+      OrderFulfillment: 0,
+      WarehouseStock: 0
+    };
 
     // --- CASE A: MOCK SIMULATION MODE ---
     if (isMockToken) {
       await new Promise(resolve => setTimeout(resolve, 1500));
-      const syncJobId = `SYN-${Math.floor(100 + Math.random() * 900)}`;
-
-      let recordsCount = 0;
       let status: "Success" | "Warning" | "Failed" = "Success";
 
       if (module === "Products Sync" || module === "Full System Sync") {
@@ -93,7 +103,10 @@ export async function POST(req: Request) {
             color: "Black",
             barcodeString: `MOCKSHPF${randomPart}`,
             safetyStockLimit: 5,
-            price: 24.99,
+            price: 1299,
+            compareAtPrice: 1999,
+            vendor: "Seyon Essentials",
+            brand: "Seyon",
             category: "Top",
             targetGroup: "Adults",
             thumbnailConfig: JSON.stringify({ color: "black" }),
@@ -102,6 +115,7 @@ export async function POST(req: Request) {
 
         if (!insErr) {
           recordsCount += 1;
+          tableCounts.ProductVariant = (tableCounts.ProductVariant || 0) + 1;
         }
       }
 
@@ -123,6 +137,7 @@ export async function POST(req: Request) {
 
         if (!custErr) {
           recordsCount += 1;
+          tableCounts.Customer = (tableCounts.Customer || 0) + 1;
         }
       }
 
@@ -174,6 +189,7 @@ export async function POST(req: Request) {
 
           if (!ordErr && order) {
             recordsCount += 1;
+            tableCounts.Order = (tableCounts.Order || 0) + 1;
 
             if (firstVariant) {
               await supabase.from("OrderItem").insert({
@@ -182,6 +198,7 @@ export async function POST(req: Request) {
                 quantity: 1,
                 price: firstVariant.price
               });
+              tableCounts.OrderItem = (tableCounts.OrderItem || 0) + 1;
 
               // Decrement stock
               const newStock = Math.max(0, firstVariant.currentStockLevel - 1);
@@ -209,6 +226,7 @@ export async function POST(req: Request) {
               deliveryStatus: "PROCESSING",
               orderSource: "SHOPIFY"
             });
+            tableCounts.OrderFulfillment = (tableCounts.OrderFulfillment || 0) + 1;
           }
         }
       }
@@ -217,9 +235,22 @@ export async function POST(req: Request) {
         recordsCount = Math.floor(Math.random() * 12) + 3; // Fallback mock count
       }
 
+      const durationSec = ((Date.now() - startTime) / 1000).toFixed(2);
+
       return NextResponse.json({
         success: true,
         records: recordsCount,
+        jobId: syncJobId,
+        duration: `${durationSec}s`,
+        telemetry: {
+          id: syncJobId,
+          module,
+          direction: module === "Inventory Sync" ? "ERP → Shopify" : "Shopify → ERP",
+          recordsProcessed: recordsCount,
+          status,
+          duration: `${durationSec}s`,
+          timestamp: new Date().toISOString()
+        },
         log: {
           id: syncJobId,
           module,
@@ -234,11 +265,16 @@ export async function POST(req: Request) {
 
     // --- CASE B: REAL INTEGRATION MODE ---
     const shopifyDomain = shopifyStoreUrl.replace("https://", "").replace("http://", "").trim();
-    let recordsCount = 0;
-    const syncJobId = `SYN-${Math.floor(100 + Math.random() * 900)}`;
 
     let activeToken = effectiveToken;
-    const secretKeyForExchange = company.shopifyClientSecret || company.shopifyWebhookSecret || "";
+    const secretKeyForExchange = shopifyClientSecret || company.shopifyClientSecret || company.shopifyWebhookSecret || "";
+
+    // Validation Check: If user saved an API Secret Key (shpss_) instead of Admin Access Token (shpat_)
+    if (activeToken.startsWith("shpss_") && !company.shopifyClientId) {
+      return NextResponse.json({
+        error: `The saved token '${activeToken.substring(0, 10)}...' is a Shopify Secret Key. Please copy your 'Admin API access token' (starts with 'shpat_') from Shopify Admin ➔ Apps ➔ Seyon Shopping ERP ➔ API credentials.`
+      }, { status: 400 });
+    }
 
     // Auto Client Credentials Token Exchange: If token isn't shpat_ and secret/client_id exists
     if (!activeToken.startsWith("shpat_") && secretKeyForExchange) {
@@ -282,13 +318,34 @@ export async function POST(req: Request) {
       }
 
       const { products } = await res.json();
+      // Resolve default warehouse for inventory stock sync
+      let defaultWarehouseId: string | null = null;
+      const { data: defaultWh } = await supabase
+        .from("Warehouse")
+        .select("id")
+        .eq("companyId", companyId)
+        .eq("isDefaultPickup", true)
+        .maybeSingle();
+
+      if (defaultWh) {
+        defaultWarehouseId = defaultWh.id;
+      } else {
+        const { data: anyWh } = await supabase
+          .from("Warehouse")
+          .select("id")
+          .eq("companyId", companyId)
+          .limit(1)
+          .maybeSingle();
+        if (anyWh) defaultWarehouseId = anyWh.id;
+      }
+
       if (Array.isArray(products)) {
         for (const prod of products) {
           const title = prod.title;
           const category = prod.product_type || "Top";
           const images = prod.images || [];
           const imageUrl = images[0]?.src || "";
-          const vendorBrand = prod.vendor || null;
+          const vendorBrand = prod.vendor || "Seyon Essentials";
           
           for (const variant of (prod.variants || [])) {
             const shopifyVariantId = `gid://shopify/ProductVariant/${variant.id}`;
@@ -296,8 +353,9 @@ export async function POST(req: Request) {
             const size = variant.option1 || "Free";
             const color = variant.option2 || "Default";
             const price = parseFloat(variant.price) || 0.0;
-            const compareAtPrice = variant.compare_at_price ? parseFloat(variant.compare_at_price) : null;
+            const compareAtPrice = variant.compare_at_price ? parseFloat(variant.compare_at_price) : Math.round(price * 1.25);
             const barcodeString = variant.barcode || `BAR-${variant.id}`;
+            const liveStockQty = typeof variant.inventory_quantity === "number" ? variant.inventory_quantity : 0;
 
             const thumbnailConfig = imageUrl
               ? JSON.stringify({ imageUrl, color: color.toLowerCase() })
@@ -311,7 +369,10 @@ export async function POST(req: Request) {
               .eq("sku", sku)
               .maybeSingle();
 
+            let variantDbId: string | null = null;
+
             if (existing) {
+              variantDbId = existing.id;
               await supabase
                 .from("ProductVariant")
                 .update({
@@ -324,11 +385,12 @@ export async function POST(req: Request) {
                   category,
                   barcodeString,
                   thumbnailConfig,
+                  currentStockLevel: liveStockQty,
                   updatedAt: new Date().toISOString()
                 })
                 .eq("id", existing.id);
             } else {
-              await supabase
+              const { data: insertedVariant } = await supabase
                 .from("ProductVariant")
                 .insert({
                   companyId,
@@ -345,10 +407,32 @@ export async function POST(req: Request) {
                   barcodeString,
                   thumbnailConfig,
                   safetyStockLimit: 5,
-                  currentStockLevel: variant.inventory_quantity || 0
-                });
+                  currentStockLevel: liveStockQty
+                })
+                .select("id")
+                .single();
+              if (insertedVariant) variantDbId = insertedVariant.id;
             }
+
+            // Reconcile WarehouseStock in central warehouse
+            if (defaultWarehouseId && variantDbId) {
+              await supabase
+                .from("WarehouseStock")
+                .upsert(
+                  {
+                    companyId,
+                    warehouseId: defaultWarehouseId,
+                    variantId: variantDbId,
+                    availableQty: liveStockQty,
+                    updatedAt: new Date().toISOString()
+                  },
+                  { onConflict: "warehouseId,variantId" }
+                );
+              tableCounts.WarehouseStock = (tableCounts.WarehouseStock || 0) + 1;
+            }
+
             recordsCount++;
+            tableCounts.ProductVariant = (tableCounts.ProductVariant || 0) + 1;
           }
         }
       }
@@ -414,6 +498,7 @@ export async function POST(req: Request) {
               });
           }
           recordsCount++;
+          tableCounts.Customer = (tableCounts.Customer || 0) + 1;
         }
       }
     }
@@ -425,7 +510,7 @@ export async function POST(req: Request) {
         {
           method: "GET",
           headers: {
-            "X-Shopify-Access-Token": shopifyAccessToken,
+            "X-Shopify-Access-Token": activeToken,
             "Content-Type": "application/json"
           }
         }
@@ -547,6 +632,7 @@ export async function POST(req: Request) {
 
             if (createOrderErr) throw createOrderErr;
             orderId = newOrder.id;
+            tableCounts.Order = (tableCounts.Order || 0) + 1;
           }
 
           // 3. Line Items and Stock Reconcile (Only on newly created orders)
@@ -585,6 +671,7 @@ export async function POST(req: Request) {
                   quantity: itemQuantity,
                   price: itemPrice
                 });
+                tableCounts.OrderItem = (tableCounts.OrderItem || 0) + 1;
 
                 // Reconcile ERP stock level
                 const newStock = Math.max(0, variant.currentStockLevel - itemQuantity);
@@ -673,13 +760,28 @@ export async function POST(req: Request) {
               });
           }
           recordsCount++;
+          tableCounts.OrderFulfillment = (tableCounts.OrderFulfillment || 0) + 1;
         }
       }
     }
 
+    const durationSec = ((Date.now() - startTime) / 1000).toFixed(2);
+
     return NextResponse.json({
       success: true,
       records: recordsCount,
+      jobId: syncJobId,
+      duration: `${durationSec}s`,
+      telemetry: {
+        id: syncJobId,
+        module,
+        direction: module === "Inventory Sync" ? "ERP → Shopify" : "Shopify → ERP",
+        recordsProcessed: recordsCount,
+        tableCounts,
+        status: "SUCCESS",
+        duration: `${durationSec}s`,
+        timestamp: new Date().toISOString()
+      },
       log: {
         id: syncJobId,
         module,

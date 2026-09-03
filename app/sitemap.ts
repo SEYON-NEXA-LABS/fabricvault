@@ -1,6 +1,8 @@
 import { MetadataRoute } from "next";
 import { headers } from "next/headers";
-import { supabase } from "@repo/db";
+import { supabaseAdmin as supabase } from "@/lib/supabase";
+
+export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const headersList = await headers();
@@ -28,32 +30,48 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     },
     {
+      url: `${baseUrl}/help`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+    {
       url: `${baseUrl}/checkout`,
       lastModified: new Date(),
       changeFrequency: "weekly",
-      priority: 0.5,
+      priority: 0.4,
     },
   ];
 
   try {
-    if (!supabase) return staticRoutes;
+    const [variantsRes, blogsRes, categoriesRes] = await Promise.all([
+      supabase.from("ProductVariant").select("id, updatedAt").limit(500),
+      supabase.from("BlogPost").select("slug, updatedAt").eq("published", true).limit(100),
+      supabase.from("Category").select("id, updatedAt").limit(100)
+    ]);
 
-    // Fetch active product variants for dynamic product detail page sitemaps
-    const { data: variants } = await supabase
-      .from("ProductVariant")
-      .select("id, updatedAt")
-      .limit(100);
+    const productRoutes: MetadataRoute.Sitemap = (variantsRes.data || []).map((v) => ({
+      url: `${baseUrl}/products/${v.id}`,
+      lastModified: v.updatedAt ? new Date(v.updatedAt) : new Date(),
+      changeFrequency: "weekly",
+      priority: 0.8,
+    }));
 
-    if (variants && variants.length > 0) {
-      const productRoutes: MetadataRoute.Sitemap = variants.map((v) => ({
-        url: `${baseUrl}/products/${v.id}`,
-        lastModified: v.updatedAt ? new Date(v.updatedAt) : new Date(),
-        changeFrequency: "weekly",
-        priority: 0.8,
-      }));
+    const blogRoutes: MetadataRoute.Sitemap = (blogsRes.data || []).map((b) => ({
+      url: `${baseUrl}/blog/${b.slug}`,
+      lastModified: b.updatedAt ? new Date(b.updatedAt) : new Date(),
+      changeFrequency: "weekly",
+      priority: 0.7,
+    }));
 
-      return [...staticRoutes, ...productRoutes];
-    }
+    const categoryRoutes: MetadataRoute.Sitemap = (categoriesRes.data || []).map((c) => ({
+      url: `${baseUrl}/category/${c.id}`,
+      lastModified: c.updatedAt ? new Date(c.updatedAt) : new Date(),
+      changeFrequency: "monthly",
+      priority: 0.6,
+    }));
+
+    return [...staticRoutes, ...productRoutes, ...blogRoutes, ...categoryRoutes];
   } catch (err) {
     console.error("Error generating sitemap:", err);
   }

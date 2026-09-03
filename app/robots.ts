@@ -4,8 +4,6 @@ import { headers } from "next/headers";
 export const dynamic = "force-dynamic";
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
-
-
   const headersList = await headers();
   const host = headersList.get("host") || (process.env.NEXT_PUBLIC_APP_URL ? new URL(process.env.NEXT_PUBLIC_APP_URL).host : "localhost:3000");
   const protocol = host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https";
@@ -16,7 +14,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/checkout", "/api/", "/admin"],
+        disallow: ["/dashboard/", "/api/", "/admin/", "/checkout"],
       },
     ],
     sitemap: `${baseUrl}/sitemap.xml`,

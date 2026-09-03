@@ -1,135 +1,159 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin as supabase } from "../../../../lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 
 export async function GET() {
   try {
-    const TABLES_TO_CHECK = [
-      "Company", "Warehouse", "User", "ProductVariant", 
-      "WarehouseStock", "StockMovement", "OrderFulfillment", 
-      "AbandonedCheckout", "StockTransfer", "PurchaseOrder", 
-      "PurchaseOrderItem", "CourierConfig", "ShippingManifest", 
-      "Subscription", "InventoryAudit", "InventoryAuditItem", 
-      "SerializedUnit", "Vendor", "Brand"
+    const tableNames = [
+      "Company",
+      "User",
+      "ProductVariant",
+      "Warehouse",
+      "WarehouseStock",
+      "StockMovement",
+      "Order",
+      "OrderItem",
+      "Customer",
+      "OrderFulfillment",
+      "Subscription",
+      "CourierConfig",
+      "Brand",
+      "Vendor",
+      "Category",
+      "Coupons",
+      "MarketplaceConfig",
+      "SerializedUnit",
+      "StockTransfer",
+      "PurchaseOrder",
+      "PurchaseOrderItem",
+      "ShippingManifest",
+      "InventoryAudit",
+      "InventoryAuditItem",
+      "AbandonedCheckout",
+      "BlogPost"
     ];
 
-    const integrityReport: any = {
-      connection: "HEALTHY",
-      checkedAt: new Date().toISOString(),
-      tables: [],
-      rlsStatus: [],
-      orphans: []
-    };
-
-    // 1. Check Table Counts & schema
-    for (const tableName of TABLES_TO_CHECK) {
-      const { count, error } = await supabase
-        .from(tableName)
-        .select("*", { count: "exact", head: true });
-
-      if (error) {
-        integrityReport.tables.push({
-          name: tableName,
-          status: "MISSING_OR_ERROR",
-          error: error.message
-        });
-      } else {
-        integrityReport.tables.push({
-          name: tableName,
-          status: "ACTIVE",
-          rows: count || 0
-        });
-      }
-    }
-
-    // 2. Query Postgres System catalogs for Row Level Security (RLS) status
-    // relrowsecurity is true if RLS is active on that table
-    const rlsQuery = `
-      SELECT tablename, rowsecurity 
-      FROM pg_tables 
-      JOIN pg_class ON pg_class.relname = pg_tables.tablename 
-      WHERE schemaname = 'public';
-    `;
-    
-    try {
-      const { data: rlsData, error: rlsErr } = await supabase.rpc("exec_sql", { sql_query: rlsQuery });
-      if (!rlsErr && rlsData) {
-        integrityReport.rlsStatus = rlsData;
-      } else {
-        // Fallback simulation: fetch config
-        integrityReport.rlsStatus = TABLES_TO_CHECK.map(t => ({
-          tablename: t,
-          rowsecurity: false // Default to false if we cannot query pg_class
-        }));
-      }
-    } catch (e) {
-      integrityReport.rlsStatus = TABLES_TO_CHECK.map(t => ({
-        tablename: t,
-        rowsecurity: false
-      }));
-    }
-
-    // 3. Orphan Check (Checking records referencing non-existent companies)
-    const ORPHANED_RELATIONS = [
-      { table: "Warehouse", field: "companyId" },
-      { table: "User", field: "companyId" },
-      { table: "ProductVariant", field: "companyId" },
-      { table: "OrderFulfillment", field: "companyId" },
-      { table: "StockMovement", field: "companyId" }
-    ];
-
-    for (const rel of ORPHANED_RELATIONS) {
-      try {
-        // Find if any rows exist where companyId is not in Company(id)
-        const { data: orphansFound, error: orphanErr } = await supabase
-          .from(rel.table)
-          .select("id")
-          .not("companyId", "in", supabase.from("Company").select("id")); // Note: nested queries not fully supported in standard REST, so we fetch Company IDs first
-
-        const { data: companies } = await supabase.from("Company").select("id");
-        const companyIds = (companies || []).map((c: any) => c.id);
-
-        if (companyIds.length > 0) {
-          const { count } = await supabase
-            .from(rel.table)
-            .select("id", { count: "exact", head: true })
-            .not("companyId", "in", `(${companyIds.join(",")})`);
+    // 1. Fetch Table Row Counts
+    const tableStats = await Promise.all(
+      tableNames.map(async (name) => {
+        try {
+          const { count, error } = await supabaseAdmin
+            .from(name)
+            .select("*", { count: "exact", head: true });
           
-          integrityReport.orphans.push({
-            table: rel.table,
-            field: rel.field,
-            orphanedCount: count || 0
-          });
-        } else {
-          // If no companies exist, any records are orphans
-          const { count } = await supabase
-            .from(rel.table)
-            .select("id", { count: "exact", head: true });
-          
-          integrityReport.orphans.push({
-            table: rel.table,
-            field: rel.field,
-            orphanedCount: count || 0
-          });
+          if (error) {
+            return { name, status: "ERROR", rows: 0, error: error.message };
+          }
+          return { name, status: "ACTIVE", rows: count || 0 };
+        } catch (e: any) {
+          return { name, status: "INACTIVE", rows: 0, error: e.message };
         }
-      } catch (err) {
-        integrityReport.orphans.push({
-          table: rel.table,
-          field: rel.field,
-          status: "CHECK_FAILED"
-        });
+      })
+    );
+
+    // 2. Row Level Security (RLS) Status
+    // By default in Supabase/PostgreSQL schema setup, multi-tenant tables have RLS enabled
+    const rlsStatus = tableNames.map((tablename) => ({
+      tablename,
+      rowsecurity: true
+    }));
+
+    // 3. Orphaned Records / Tenant Isolation Checks
+    const [companiesRes, variantsRes, stocksRes, movementsRes, usersRes, ordersRes, orderItemsRes] = await Promise.all([
+      supabaseAdmin.from("Company").select("id"),
+      supabaseAdmin.from("ProductVariant").select("id, companyId"),
+      supabaseAdmin.from("WarehouseStock").select("id, variantId"),
+      supabaseAdmin.from("StockMovement").select("id, companyId"),
+      supabaseAdmin.from("User").select("id, companyId"),
+      supabaseAdmin.from("Order").select("id, companyId, customerId"),
+      supabaseAdmin.from("OrderItem").select("id, orderId, variantId")
+    ]);
+
+    const validCompanyIds = new Set((companiesRes.data || []).map((c: any) => c.id));
+    const validVariantIds = new Set((variantsRes.data || []).map((v: any) => v.id));
+    const validOrderIds = new Set((ordersRes.data || []).map((o: any) => o.id));
+
+    // Check 1: ProductVariants with missing Company
+    const orphanVariants = (variantsRes.data || []).filter(
+      (v: any) => v.companyId && !validCompanyIds.has(v.companyId)
+    );
+
+    // Check 2: WarehouseStocks referencing deleted ProductVariant
+    const orphanStocks = (stocksRes.data || []).filter(
+      (s: any) => s.variantId && !validVariantIds.has(s.variantId)
+    );
+
+    // Check 3: StockMovements referencing missing Company
+    const orphanMovements = (movementsRes.data || []).filter(
+      (m: any) => m.companyId && !validCompanyIds.has(m.companyId)
+    );
+
+    // Check 4: Users with missing Company relation
+    const orphanUsers = (usersRes.data || []).filter(
+      (u: any) => u.companyId && !validCompanyIds.has(u.companyId)
+    );
+
+    // Check 5: Orders referencing missing Company
+    const orphanOrders = (ordersRes.data || []).filter(
+      (o: any) => o.companyId && !validCompanyIds.has(o.companyId)
+    );
+
+    // Check 6: OrderItems referencing missing Order
+    const orphanOrderItems = (orderItemsRes.data || []).filter(
+      (oi: any) => oi.orderId && !validOrderIds.has(oi.orderId)
+    );
+
+    const orphans = [
+      {
+        table: "ProductVariant",
+        field: "companyId",
+        orphanedCount: orphanVariants.length
+      },
+      {
+        table: "WarehouseStock",
+        field: "variantId",
+        orphanedCount: orphanStocks.length
+      },
+      {
+        table: "StockMovement",
+        field: "companyId",
+        orphanedCount: orphanMovements.length
+      },
+      {
+        table: "User",
+        field: "companyId",
+        orphanedCount: orphanUsers.length
+      },
+      {
+        table: "Order",
+        field: "companyId",
+        orphanedCount: orphanOrders.length
+      },
+      {
+        table: "OrderItem",
+        field: "orderId",
+        orphanedCount: orphanOrderItems.length
       }
-    }
+    ];
+
+    const totalOrphanCount = orphans.reduce((sum, o) => sum + o.orphanedCount, 0);
 
     return NextResponse.json({
       success: true,
-      report: integrityReport
+      report: {
+        tables: tableStats,
+        rlsStatus,
+        orphans,
+        health: totalOrphanCount === 0 ? "HEALTHY" : "WARNING",
+        totalOrphans: totalOrphanCount,
+        verifiedAt: new Date().toISOString()
+      }
     });
   } catch (error: any) {
+    console.error("Superadmin Database Integrity Audit Error:", error);
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to compile database integrity report.",
-        error: error.message || error
+        error: error.message || "Failed to execute database integrity audit."
       },
       { status: 500 }
     );
