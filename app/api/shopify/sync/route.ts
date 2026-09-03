@@ -336,7 +336,27 @@ export async function POST(req: Request) {
           .eq("companyId", companyId)
           .limit(1)
           .maybeSingle();
-        if (anyWh) defaultWarehouseId = anyWh.id;
+        if (anyWh) {
+          defaultWarehouseId = anyWh.id;
+        } else {
+          // Auto-provision primary warehouse hub if 0 warehouses exist
+          const { data: autoWh } = await supabase
+            .from("Warehouse")
+            .insert({
+              companyId,
+              name: "Primary Fulfillment Hub",
+              code: "WH-01",
+              addressLine1: "Textile City Logistics Hub",
+              city: "Coimbatore",
+              state: "Tamil Nadu",
+              zip: "641001",
+              country: "India",
+              isDefaultPickup: true
+            })
+            .select("id")
+            .single();
+          if (autoWh) defaultWarehouseId = autoWh.id;
+        }
       }
 
       if (Array.isArray(products)) {
