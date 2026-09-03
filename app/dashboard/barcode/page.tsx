@@ -32,11 +32,13 @@ interface ProductVariant {
   ageRange?: string;
 }
 
+export type TagPreset = "STANDARD" | "COMPACT" | "MICRO" | "TAG_40X50" | "TAG_50X40_LAND" | "TAG_40X50_HYBRID";
+
 interface QueueItem {
   id: string;
   variant: ProductVariant;
   quantity: number;
-  preset: "STANDARD" | "COMPACT" | "MICRO";
+  preset: TagPreset;
 }
 
 
@@ -137,7 +139,7 @@ export default function BarcodePage() {
   const [codeType, setCodeType] = useState<"BARCODE" | "QR">("QR");
   const [barcodeFormat, setBarcodeFormat] = useState<"CODE128" | "CODE39">("CODE128");
   const [qrPayloadType, setQrPayloadType] = useState<"SKU" | "URL" | "SERIALIZED">("SERIALIZED");
-  const [tagPreset, setTagPreset] = useState<"STANDARD" | "COMPACT" | "MICRO">("STANDARD");
+  const [tagPreset, setTagPreset] = useState<TagPreset>("STANDARD");
   const [printCopies, setPrintCopies] = useState<number>(1);
   
   const [width, setWidth] = useState<number>(2);
@@ -155,7 +157,7 @@ export default function BarcodePage() {
     }
   }, [company]);
 
-  const handlePresetChange = (preset: "STANDARD" | "COMPACT" | "MICRO") => {
+  const handlePresetChange = (preset: TagPreset) => {
     setTagPreset(preset);
     if (preset === "STANDARD") {
       setQrSize(100);
@@ -172,6 +174,21 @@ export default function BarcodePage() {
       setShowBrand(false);
       setShowPrice(false);
       setDisplayValue(false);
+    } else if (preset === "TAG_40X50") {
+      setQrSize(90);
+      setShowBrand(true);
+      setShowPrice(true);
+      setDisplayValue(true);
+    } else if (preset === "TAG_50X40_LAND") {
+      setQrSize(75);
+      setShowBrand(true);
+      setShowPrice(true);
+      setDisplayValue(true);
+    } else if (preset === "TAG_40X50_HYBRID") {
+      setQrSize(70);
+      setShowBrand(true);
+      setShowPrice(true);
+      setDisplayValue(true);
     }
   };
 
@@ -429,20 +446,21 @@ export default function BarcodePage() {
                   </div>
                 </div>
 
-                {codeType === "QR" && (
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-700">Label Print Preset</label>
-                    <select
-                      value={tagPreset}
-                      onChange={(e) => handlePresetChange(e.target.value as any)}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs focus:outline-none"
-                    >
-                      <option value="STANDARD">Standard (2" x 2")</option>
-                      <option value="COMPACT">Compact (1.5" x 1.5")</option>
-                      <option value="MICRO">Micro (1" x 1")</option>
-                    </select>
-                  </div>
-                )}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700">Label Print Preset</label>
+                  <select
+                    value={tagPreset}
+                    onChange={(e) => handlePresetChange(e.target.value as any)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs focus:outline-none"
+                  >
+                    <option value="STANDARD">Standard Square (2" × 2" / 50×50 mm)</option>
+                    <option value="COMPACT">Compact Square (1.5" × 1.5" / 38×38 mm)</option>
+                    <option value="MICRO">Micro Sticker (1" × 1" / 25×25 mm)</option>
+                    <option value="TAG_40X50">Retail Tag Portrait (40 × 50 mm / 1.57" × 1.97")</option>
+                    <option value="TAG_50X40_LAND">Retail Tag Landscape (50 × 40 mm)</option>
+                    <option value="TAG_40X50_HYBRID">Retail Tag Hybrid QR+Barcode (40 × 50 mm)</option>
+                  </select>
+                </div>
 
                 {codeType === "QR" ? (
                   <div className="space-y-1">
@@ -603,16 +621,18 @@ export default function BarcodePage() {
             </div>
 
             <div className="border border-dashed border-gray-200 rounded-lg p-6 bg-slate-50 flex items-center justify-center flex-1">
-              <div className={`bg-white border border-gray-200 rounded shadow-md flex flex-col items-center justify-center font-mono relative transition-all ${
+              <div className={`bg-white border border-gray-200 rounded shadow-md flex flex-col items-center justify-between font-mono relative transition-all ${
                 tagPreset === "MICRO" ? "p-2 w-36 min-h-[90px]" :
                 tagPreset === "COMPACT" ? "p-3 w-44 min-h-[115px]" :
+                tagPreset === "TAG_40X50" || tagPreset === "TAG_40X50_HYBRID" ? "p-3 w-[151px] min-h-[189px]" :
+                tagPreset === "TAG_50X40_LAND" ? "p-3 w-[189px] min-h-[151px]" :
                 "p-4 w-52 min-h-[140px]"
               }`}>
                 {/* High-visibility size block at top-right */}
                 <div className={`absolute bg-slate-900 text-white rounded font-extrabold flex items-center justify-center border border-black shadow-sm ${
                   tagPreset === "MICRO" 
                     ? "top-1.5 right-1.5 px-1.5 py-0.5 text-sm min-w-[24px] h-[24px]" 
-                    : "top-2 right-2 px-2.5 py-1 text-xl min-w-[36px] h-[36px]"
+                    : "top-2 right-2 px-2 py-0.5 text-base min-w-[30px] h-[30px]"
                 }`}>
                   {selectedProduct.size}
                 </div>
@@ -925,7 +945,7 @@ interface PrintTagProps {
   showPrice: boolean;
   showBrand: boolean;
   customBrand: string;
-  tagPreset: "STANDARD" | "COMPACT" | "MICRO";
+  tagPreset: TagPreset;
 }
 
 function PrintTag({
@@ -947,17 +967,17 @@ function PrintTag({
   const printShowBrand = tagPreset === "MICRO" ? false : showBrand;
   const printShowPrice = (tagPreset === "MICRO" || tagPreset === "COMPACT") ? false : showPrice;
   const printDisplayValue = tagPreset === "MICRO" ? false : displayValue;
-  const printQrSize = tagPreset === "MICRO" ? 60 : tagPreset === "COMPACT" ? 80 : qrSize;
+  const printQrSize = tagPreset === "MICRO" ? 60 : tagPreset === "COMPACT" ? 80 : (tagPreset === "TAG_40X50_HYBRID" ? 60 : qrSize);
 
   useEffect(() => {
-    if (codeType === "BARCODE" && canvasRef.current) {
+    if ((codeType === "BARCODE" || tagPreset === "TAG_40X50_HYBRID") && canvasRef.current) {
       try {
         JsBarcode(canvasRef.current, variant.sku, {
           format: barcodeFormat,
-          width: width,
-          height: height,
-          displayValue: false, // Hidden standard label text inside tag
-          margin: 6,
+          width: tagPreset === "TAG_40X50_HYBRID" ? 1 : width,
+          height: tagPreset === "TAG_40X50_HYBRID" ? 32 : height,
+          displayValue: false,
+          margin: 4,
           background: "#ffffff",
           lineColor: "#000000"
         });
@@ -965,24 +985,28 @@ function PrintTag({
         console.warn("Invalid SKU printed tag barcode generation", e);
       }
     }
-  }, [variant, codeType, barcodeFormat, width, height]);
+  }, [variant, codeType, barcodeFormat, width, height, tagPreset]);
+
+  const isLandscape = tagPreset === "TAG_50X40_LAND";
 
   return (
     <div className={`border border-gray-400 bg-white flex flex-col items-center justify-between font-mono w-full rounded break-inside-avoid relative transition-all ${
       tagPreset === "MICRO" ? "p-2 min-h-[90px]" :
       tagPreset === "COMPACT" ? "p-3 min-h-[115px]" :
+      tagPreset === "TAG_40X50" || tagPreset === "TAG_40X50_HYBRID" ? "p-3 min-h-[175px] max-w-[155px]" :
+      tagPreset === "TAG_50X40_LAND" ? "p-3 min-h-[140px] max-w-[195px]" :
       "p-4 min-h-[140px]"
     }`}>
       {/* High-visibility size block at top-right */}
       <div className={`absolute bg-slate-900 text-white rounded font-extrabold flex items-center justify-center border border-black shadow-sm ${
         tagPreset === "MICRO" 
           ? "top-1.5 right-1.5 px-1.5 py-0.5 text-sm min-w-[24px] h-[24px]" 
-          : "top-2 right-2 px-2.5 py-1 text-xl min-w-[36px] h-[36px]"
+          : "top-2 right-2 px-2 py-0.5 text-base min-w-[30px] h-[30px]"
       }`}>
         {variant.size}
       </div>
 
-      <div className={`w-full text-left ${tagPreset === "MICRO" ? "pr-8" : "pr-12"}`}>
+      <div className={`w-full text-left ${tagPreset === "MICRO" ? "pr-8" : "pr-10"}`}>
         {printShowBrand && (
           <p className="text-[10px] font-bold text-slate-900 uppercase tracking-wider mb-0.5">
             {customBrand}
@@ -993,35 +1017,52 @@ function PrintTag({
         </p>
         {tagPreset !== "MICRO" && (
           <p className="text-[8px] text-slate-500 leading-none truncate w-full">
-            Color: {variant.color} {variant.targetGroup ? `| Age: ${variant.targetGroup}${variant.ageRange ? ` (${variant.ageRange})` : ""}` : ""}
+            Color: {variant.color} {variant.targetGroup ? `| Age: ${variant.targetGroup}` : ""}
           </p>
         )}
       </div>
       
-      <div className="flex items-center justify-center my-2.5">
-        {codeType === "QR" ? (
-          <div style={{ width: printQrSize - 16, height: printQrSize - 16 }}>
+      {tagPreset === "TAG_40X50_HYBRID" ? (
+        <div className="flex items-center justify-around w-full my-2 gap-1 border-y border-dashed border-gray-200 py-1.5">
+          <div style={{ width: 52, height: 52 }}>
             <QRCodeSVG 
               value={qrValue} 
               size={256}
               style={{ width: '100%', height: '100%' }}
-              level="H"
+              level="M"
               fgColor="#000000"
               bgColor="#ffffff"
               includeMargin={false}
             />
           </div>
-        ) : (
-          <canvas ref={canvasRef} className="max-w-full" />
-        )}
-      </div>
+          <canvas ref={canvasRef} className="max-w-[80px]" />
+        </div>
+      ) : (
+        <div className="flex items-center justify-center my-2.5">
+          {codeType === "QR" ? (
+            <div style={{ width: printQrSize - 16, height: printQrSize - 16 }}>
+              <QRCodeSVG 
+                value={qrValue} 
+                size={256}
+                style={{ width: '100%', height: '100%' }}
+                level="H"
+                fgColor="#000000"
+                bgColor="#ffffff"
+                includeMargin={false}
+              />
+            </div>
+          ) : (
+            <canvas ref={canvasRef} className="max-w-full" />
+          )}
+        </div>
+      )}
 
       {printDisplayValue && (
-        <div className="mt-2 text-center w-full bg-slate-100 border border-slate-350 rounded py-1.5 px-2">
-          <p className="text-[9px] text-slate-800 font-extrabold uppercase tracking-wide mb-1">
-            Manual SKU Entry
+        <div className="mt-1.5 text-center w-full bg-slate-100 border border-slate-350 rounded py-1 px-1.5">
+          <p className="text-[8px] text-slate-800 font-extrabold uppercase tracking-wide mb-0.5">
+            SKU Code
           </p>
-          <p className="text-xs text-black font-black tracking-wider">
+          <p className="text-xs text-black font-black tracking-wider truncate">
             {variant.sku}
           </p>
         </div>
